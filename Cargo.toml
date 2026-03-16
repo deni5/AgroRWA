@@ -1,8 +1,10 @@
 [workspace]
 members = [
-    "programs/agro_registry",
-    "programs/liquidity_pool",
-    "programs/vault"
+    "programs/identity",
+    "programs/asset_registry",
+    "programs/oracle_verify",
+    "programs/marketplace",
+    "programs/insurance"
 ]
 resolver = "2"
 

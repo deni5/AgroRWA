@@ -3,14 +3,18 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-agro_registry = "AgroReg111111111111111111111111111111111111"
-liquidity_pool = "AgroPool11111111111111111111111111111111111"
-vault = "AgroVault1111111111111111111111111111111111"
+identity       = "AgroID111111111111111111111111111111111111111"
+asset_registry = "AgroAsset11111111111111111111111111111111111"
+oracle_verify  = "AgroOracle1111111111111111111111111111111111"
+marketplace    = "AgroMkt1111111111111111111111111111111111111"
+insurance      = "AgroIns1111111111111111111111111111111111111"
 
 [programs.devnet]
-agro_registry = "AgroReg111111111111111111111111111111111111"
-liquidity_pool = "AgroPool11111111111111111111111111111111111"
-vault = "AgroVault1111111111111111111111111111111111"
+identity       = "AgroID111111111111111111111111111111111111111"
+asset_registry = "AgroAsset11111111111111111111111111111111111"
+oracle_verify  = "AgroOracle1111111111111111111111111111111111"
+marketplace    = "AgroMkt1111111111111111111111111111111111111"
+insurance      = "AgroIns1111111111111111111111111111111111111"
 
 [registry]
 url = "https://api.apr.dev"
@@ -21,3 +25,9 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+# NOTE: After `anchor build`, update program IDs:
+# 1. Run: anchor build
+# 2. Get IDs: anchor keys list
+# 3. Replace placeholder IDs above and in each programs/*/src/lib.rs
+# 4. Set wallet to FWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d keypair path

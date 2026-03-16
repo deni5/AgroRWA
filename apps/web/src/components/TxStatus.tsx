@@ -1,42 +1,30 @@
 'use client'
 
-import { TxState } from '@/types'
+import type { TxState } from '@/types'
 import { clsx } from 'clsx'
 
-interface Props {
-  tx: TxState
-  className?: string
-}
-
-export function TxStatus({ tx, className }: Props) {
+export function TxStatus({ tx, className }: { tx: TxState; className?: string }) {
   if (tx.status === 'idle') return null
 
   return (
-    <div
-      className={clsx(
-        'rounded-lg px-4 py-3 text-sm flex items-start gap-3',
-        tx.status === 'pending' && 'bg-yellow-900/30 border border-yellow-700/40 text-yellow-300',
-        tx.status === 'success' && 'bg-agro-900/30 border border-agro-700/40 text-agro-300',
-        tx.status === 'error'   && 'bg-red-900/30 border border-red-700/40 text-red-300',
-        className
-      )}
-    >
-      {tx.status === 'pending' && <span className="animate-spin mt-0.5">⏳</span>}
-      {tx.status === 'success' && <span>✅</span>}
-      {tx.status === 'error'   && <span>❌</span>}
+    <div className={clsx('rounded-lg px-4 py-3 text-sm flex items-start gap-3', {
+      'bg-yellow-900/30 border border-yellow-700/40 text-yellow-300': tx.status === 'pending',
+      'bg-green-900/30 border border-green-700/40 text-green-300':   tx.status === 'success',
+      'bg-red-900/30 border border-red-700/40 text-red-300':         tx.status === 'error',
+    }, className)}>
+      <span className="flex-shrink-0">
+        {tx.status === 'pending' && <span className="animate-spin inline-block">⏳</span>}
+        {tx.status === 'success' && '✅'}
+        {tx.status === 'error'   && '❌'}
+      </span>
       <div>
         {tx.status === 'pending' && 'Transaction pending…'}
         {tx.status === 'success' && (
-          <>
-            Transaction confirmed!{' '}
+          <>Transaction confirmed!{' '}
             {tx.signature && (
-              <a
-                href={`https://explorer.solana.com/tx/${tx.signature}?cluster=devnet`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                View on Explorer
+              <a href={`https://explorer.solana.com/tx/${tx.signature}?cluster=devnet`}
+                target="_blank" rel="noopener noreferrer" className="underline">
+                View on Explorer ↗
               </a>
             )}
           </>

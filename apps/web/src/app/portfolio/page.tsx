@@ -3,115 +3,129 @@
 import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import Link from 'next/link'
-import { useVaultDeposits } from '@/hooks/useVault'
-import { usePools } from '@/hooks/usePools'
+import { useEmitterProfile, useOracleProfile } from '@/hooks/useIdentity'
 
-function shortMint(m: string) { return `${m.slice(0, 6)}…${m.slice(-4)}` }
+function shortAddr(a: string) { return `${a.slice(0, 6)}…${a.slice(-4)}` }
 
 export default function PortfolioPage() {
   const { publicKey } = useWallet()
-  const { data: deposits, isLoading: loadingDeposits } = useVaultDeposits()
-  const { data: pools } = usePools()
+  const { data: emitter } = useEmitterProfile(publicKey?.toBase58())
+  const { data: oracle }  = useOracleProfile(publicKey?.toBase58())
 
-  if (!publicKey) {
-    return (
-      <div className="max-w-lg mx-auto card text-center py-16 space-y-4">
-        <p className="text-gray-400">Connect your wallet to view your portfolio.</p>
-        <WalletMultiButton />
-      </div>
-    )
-  }
-
-  const activeDeposits = deposits?.filter((d) => !d.redeemed) ?? []
-  const redeemedDeposits = deposits?.filter((d) => d.redeemed) ?? []
+  if (!publicKey) return (
+    <div className="max-w-lg mx-auto card text-center py-16 space-y-4">
+      <p className="text-gray-400">Connect wallet to view your portfolio.</p>
+      <WalletMultiButton />
+    </div>
+  )
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-100">Portfolio</h1>
-        <p className="text-gray-400 mt-1 font-mono text-sm">{shortMint(publicKey.toBase58())}</p>
+        <p className="text-gray-400 mt-1 font-mono text-sm">{shortAddr(publicKey.toBase58())}</p>
       </div>
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-agro-400">{activeDeposits.length}</p>
-          <p className="text-sm text-gray-500 mt-1">Active Vault Deposits</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-2xl font-bold text-gray-400">{redeemedDeposits.length}</p>
-          <p className="text-sm text-gray-500 mt-1">Redeemed</p>
-        </div>
-        <div className="card text-center col-span-2 md:col-span-1">
-          <p className="text-2xl font-bold text-blue-400">{pools?.length ?? 0}</p>
-          <p className="text-sm text-gray-500 mt-1">Available Pools</p>
-        </div>
-      </div>
-
-      {/* Vault deposits */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold text-gray-100">Vault Deposits</h2>
-          <Link href="/vault" className="btn-secondary text-sm py-1.5">Manage Vault</Link>
-        </div>
-
-        {loadingDeposits && (
-          <div className="space-y-3 animate-pulse">
-            {[...Array(2)].map((_, i) => <div key={i} className="card h-16 bg-gray-800" />)}
-          </div>
-        )}
-
-        {!loadingDeposits && activeDeposits.length === 0 && (
-          <div className="card text-center py-8 text-gray-500">
-            No active vault deposits.{' '}
-            <Link href="/vault" className="text-agro-400 underline">Deposit LP tokens</Link>
-          </div>
-        )}
-
-        <div className="space-y-3">
-          {activeDeposits.map((d) => {
-            const locked = d.secondsRemaining > 0
-            const unlockDate = new Date(d.unlockTime * 1000).toLocaleDateString()
-            return (
-              <div key={d.address} className="card flex items-center justify-between flex-wrap gap-3">
-                <div>
-                  <p className="font-mono text-sm text-gray-300">{shortMint(d.lpMint)} LP</p>
-                  <p className="text-sm text-gray-500">
-                    Amount: {(Number(d.amount) / 1e6).toFixed(6)}
-                  </p>
-                </div>
-                <div className="text-sm text-right">
-                  {locked ? (
-                    <>
-                      <p className="text-yellow-400">🔒 Locked</p>
-                      <p className="text-gray-500">Unlocks {unlockDate}</p>
-                    </>
-                  ) : (
-                    <p className="text-agro-400">✅ Ready to redeem</p>
-                  )}
-                </div>
-                <Link
-                  href="/vault"
-                  className={`btn-primary text-sm py-1.5 px-4 ${locked ? 'opacity-40 pointer-events-none' : ''}`}
-                >
-                  {locked ? 'Locked' : 'Redeem'}
-                </Link>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Emitter card */}
+        <div className="card">
+          <h2 className="font-semibold text-gray-100 mb-3">Emitter Status</h2>
+          {emitter ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-400">KYC</span>
+                <span className={emitter.kycStatus === 'Approved' ? 'text-green-400' : 'text-amber-400'}>
+                  {emitter.kycStatus}
+                </span>
               </div>
-            )
-          })}
+              <div className="flex justify-between">
+                <span className="text-gray-400">Rating</span>
+                <span className="text-gray-100 font-semibold">{emitter.ratingLabel} ({emitter.ratingScore})</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Deposit req.</span>
+                <span className="text-gray-100">{emitter.depositBps / 100}%</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Assets issued</span>
+                <span className="text-gray-100">{emitter.totalIssued}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Fulfilled</span>
+                <span className="text-green-400">{emitter.totalFulfilled}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Defaults</span>
+                <span className="text-red-400">{emitter.totalDefaults}</span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-gray-500 text-sm">
+              Not registered.{' '}
+              <Link href="/kyc" className="text-green-400 underline">Register</Link>
+            </div>
+          )}
         </div>
-      </section>
 
-      {/* Quick links */}
-      <section>
-        <h2 className="text-xl font-semibold text-gray-100 mb-4">Quick Actions</h2>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/tokens" className="btn-secondary">Browse Tokens</Link>
-          <Link href="/market" className="btn-secondary">Market</Link>
-          <Link href="/swap" className="btn-secondary">Swap</Link>
-          <Link href="/add-liquidity" className="btn-primary">+ Add Liquidity</Link>
+        {/* Oracle card */}
+        <div className="card">
+          <h2 className="font-semibold text-gray-100 mb-3">Oracle Status</h2>
+          {oracle ? (
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-400">Status</span>
+                <span className={oracle.isActive ? 'text-green-400' : 'text-red-400'}>
+                  {oracle.isActive ? 'Active' : 'Inactive'}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Role</span>
+                <span className="text-gray-100">{oracle.role}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Reputation</span>
+                <span className="text-gray-100 font-semibold">{oracle.reputationScore}/1000</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Verified</span>
+                <span className="text-blue-400">{oracle.verifiedCount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Disputes</span>
+                <span className="text-red-400">{oracle.disputeCount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-400">Stake</span>
+                <span className="text-gray-100">{(Number(oracle.stakeAmount) / 1e6).toFixed(0)} USDC</span>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4 text-gray-500 text-sm">
+              Not registered.{' '}
+              <Link href="/oracle" className="text-green-400 underline">Register</Link>
+            </div>
+          )}
         </div>
-      </section>
+
+        {/* Quick actions */}
+        <div className="card">
+          <h2 className="font-semibold text-gray-100 mb-3">Quick Actions</h2>
+          <div className="flex flex-col gap-2">
+            <Link href="/marketplace" className="btn-secondary text-sm text-center">Browse Assets</Link>
+            <Link href="/create-asset" className="btn-primary text-sm text-center">List New Asset</Link>
+            <Link href="/oracle" className="btn-secondary text-sm text-center">Oracle Panel</Link>
+            <Link href="/insurance" className="btn-secondary text-sm text-center">Insurance Fund</Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Holdings (placeholder) */}
+      <div className="card">
+        <h2 className="text-xl font-semibold text-gray-100 mb-4">Holdings</h2>
+        <div className="text-center py-10 text-gray-500">
+          Token holdings will appear here after you purchase assets from the marketplace.
+        </div>
+      </div>
     </div>
   )
 }

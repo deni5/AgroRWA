@@ -1,17 +1,16 @@
 {
   "name": "agrorwa",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "workspaces": ["apps/*"],
   "scripts": {
-    "dev": "npm run dev --workspace=apps/web",
-    "build": "npm run build --workspace=apps/web",
-    "test": "anchor test",
-    "test:frontend": "npm run test --workspace=apps/web",
-    "lint": "npm run lint --workspace=apps/web",
-    "anchor:build": "anchor build",
-    "anchor:deploy": "anchor deploy --provider.cluster devnet",
-    "anchor:test": "anchor test"
+    "dev":            "npm run dev --workspace=apps/web",
+    "build":          "npm run build --workspace=apps/web",
+    "anchor:build":   "anchor build",
+    "anchor:deploy":  "anchor deploy --provider.cluster devnet",
+    "anchor:test":    "anchor test",
+    "anchor:keys":    "anchor keys list",
+    "copy:idl":       "cp target/idl/*.json apps/web/src/lib/idl/"
   },
   "devDependencies": {
     "typescript": "^5.4.5",
