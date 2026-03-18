@@ -90,7 +90,7 @@ pub struct ReviewKyc<'info> {
     pub emitter_profile: Account<'info, EmitterProfile>,
 
     /// CHECK: Platform admin wallet verified in constraint
-    #[account(constraint = admin.key() == crate::PLATFORM_ADMIN @ IdentityError::Unauthorized)]
+    #[account(constraint = admin.key().to_string() == crate::PLATFORM_ADMIN_STR @ IdentityError::Unauthorized)]
     pub admin: Signer<'info>,
 }
 
@@ -104,6 +104,6 @@ pub struct UpdateEmitterRating<'info> {
     pub emitter_profile: Account<'info, EmitterProfile>,
 
     /// CHECK: Platform admin
-    #[account(constraint = admin.key() == crate::PLATFORM_ADMIN @ IdentityError::Unauthorized)]
+    #[account(constraint = admin.key().to_string() == crate::PLATFORM_ADMIN_STR @ IdentityError::Unauthorized)]
     pub admin: Signer<'info>,
 }

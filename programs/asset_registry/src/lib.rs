@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use anchor_spl::associated_token::AssociatedToken;
 
-declare_id!("AgroAssetFWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d111");
+declare_id!("DgB6YnvAFogS9FN5jfScpCyJAmbmComEifnZa2bY8J4y");
 
 pub mod state;
 pub mod errors;

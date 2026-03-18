@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 
-declare_id!("AgroIns1111111111111111111111111111111111111");
+declare_id!("8aKuqDi4FYChNmQHMQVgtYXeJFdaX44Fj3aMkX1RjZ2m");
 
 pub mod state;
 pub mod errors;
@@ -9,7 +9,7 @@ pub mod errors;
 use state::*;
 use errors::InsuranceError;
 
-pub const PLATFORM_ADMIN: Pubkey = anchor_lang::solana_program::pubkey!("FWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d");
+pub const PLATFORM_ADMIN_STR: &str = "FWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d";
 /// 20% of oracle fees go to insurance fund
 pub const ORACLE_INSURANCE_SHARE: u64 = 20;
 /// Max payout: 80% of claim amount
@@ -155,7 +155,7 @@ pub struct InitializeFund<'info> {
         bump
     )]
     pub fund: Account<'info, InsuranceFund>,
-    #[account(mut, constraint = admin.key() == PLATFORM_ADMIN @ InsuranceError::Unauthorized)]
+    #[account(mut, constraint = admin.key().to_string() == PLATFORM_ADMIN_STR @ InsuranceError::Unauthorized)]
     pub admin: Signer<'info>,
     pub system_program: Program<'info, System>,
 }
@@ -183,7 +183,7 @@ pub struct ApproveClaim<'info> {
     pub claim: Account<'info, InsuranceClaim>,
     #[account(mut)] pub fund_vault: Account<'info, TokenAccount>,
     #[account(mut)] pub claimant_payment: Account<'info, TokenAccount>,
-    #[account(constraint = admin.key() == PLATFORM_ADMIN @ InsuranceError::Unauthorized)]
+    #[account(constraint = admin.key().to_string() == PLATFORM_ADMIN_STR @ InsuranceError::Unauthorized)]
     pub admin: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
@@ -194,7 +194,7 @@ pub struct RejectClaim<'info> {
     pub fund: Account<'info, InsuranceFund>,
     #[account(mut, seeds = [b"claim", claim.claimant.as_ref()], bump = claim.bump)]
     pub claim: Account<'info, InsuranceClaim>,
-    #[account(constraint = admin.key() == PLATFORM_ADMIN @ InsuranceError::Unauthorized)]
+    #[account(constraint = admin.key().to_string() == PLATFORM_ADMIN_STR @ InsuranceError::Unauthorized)]
     pub admin: Signer<'info>,
 }
 
@@ -204,7 +204,7 @@ pub struct SlashOracle<'info> {
     pub fund: Account<'info, InsuranceFund>,
     #[account(mut)] pub fund_vault: Account<'info, TokenAccount>,
     #[account(mut)] pub oracle_stake_account: Account<'info, TokenAccount>,
-    #[account(constraint = admin.key() == PLATFORM_ADMIN @ InsuranceError::Unauthorized)]
+    #[account(constraint = admin.key().to_string() == PLATFORM_ADMIN_STR @ InsuranceError::Unauthorized)]
     pub admin: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }

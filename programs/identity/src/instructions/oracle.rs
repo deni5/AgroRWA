@@ -85,7 +85,7 @@ pub struct SetOracleActive<'info> {
     pub oracle_profile: Account<'info, OracleProfile>,
 
     /// CHECK: Platform admin
-    #[account(constraint = admin.key() == crate::PLATFORM_ADMIN @ IdentityError::Unauthorized)]
+    #[account(constraint = admin.key().to_string() == crate::PLATFORM_ADMIN_STR @ IdentityError::Unauthorized)]
     pub admin: Signer<'info>,
 }
 
@@ -99,6 +99,6 @@ pub struct UpdateOracleReputation<'info> {
     pub oracle_profile: Account<'info, OracleProfile>,
 
     /// CHECK: Platform admin
-    #[account(constraint = admin.key() == crate::PLATFORM_ADMIN @ IdentityError::Unauthorized)]
+    #[account(constraint = admin.key().to_string() == crate::PLATFORM_ADMIN_STR @ IdentityError::Unauthorized)]
     pub admin: Signer<'info>,
 }

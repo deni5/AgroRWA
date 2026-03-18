@@ -3,18 +3,18 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-identity       = "AgroID111111111111111111111111111111111111111"
-asset_registry = "AgroAsset11111111111111111111111111111111111"
-oracle_verify  = "AgroOracle1111111111111111111111111111111111"
-marketplace    = "AgroMkt1111111111111111111111111111111111111"
-insurance      = "AgroIns1111111111111111111111111111111111111"
+identity       = "56eTzHJD2rTaa8gmvWTgd71uTKoRDiBZyDkvYJwZVcRk"
+asset_registry = "DgB6YnvAFogS9FN5jfScpCyJAmbmComEifnZa2bY8J4y"
+oracle_verify  = "BL6YD7cHz2JKsQBPDu4dNWxCHgh34LBAFW86oqHKDtzQ"
+marketplace    = "Dqs8TUwX9PC7iUdpQZffHDjmVs1WyDuHSkX2JsPBdtwY"
+insurance      = "8aKuqDi4FYChNmQHMQVgtYXeJFdaX44Fj3aMkX1RjZ2m"
 
 [programs.devnet]
-identity       = "AgroID111111111111111111111111111111111111111"
-asset_registry = "AgroAsset11111111111111111111111111111111111"
-oracle_verify  = "AgroOracle1111111111111111111111111111111111"
-marketplace    = "AgroMkt1111111111111111111111111111111111111"
-insurance      = "AgroIns1111111111111111111111111111111111111"
+identity       = "56eTzHJD2rTaa8gmvWTgd71uTKoRDiBZyDkvYJwZVcRk"
+asset_registry = "DgB6YnvAFogS9FN5jfScpCyJAmbmComEifnZa2bY8J4y"
+oracle_verify  = "BL6YD7cHz2JKsQBPDu4dNWxCHgh34LBAFW86oqHKDtzQ"
+marketplace    = "Dqs8TUwX9PC7iUdpQZffHDjmVs1WyDuHSkX2JsPBdtwY"
+insurance      = "8aKuqDi4FYChNmQHMQVgtYXeJFdaX44Fj3aMkX1RjZ2m"
 
 [registry]
 url = "https://api.apr.dev"
@@ -25,9 +25,3 @@ wallet = "~/.config/solana/id.json"
 
 [scripts]
 test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
-
-# NOTE: After `anchor build`, update program IDs:
-# 1. Run: anchor build
-# 2. Get IDs: anchor keys list
-# 3. Replace placeholder IDs above and in each programs/*/src/lib.rs
-# 4. Set wallet to FWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d keypair path

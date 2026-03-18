@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 
-declare_id!("AgroIDFWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d1111111");
+
+declare_id!("56eTzHJD2rTaa8gmvWTgd71uTKoRDiBZyDkvYJwZVcRk");
 
 pub mod state;
 pub mod errors;
@@ -8,7 +9,7 @@ pub mod instructions;
 
 use instructions::*;
 
-pub const PLATFORM_ADMIN: Pubkey = anchor_lang::solana_program::pubkey!("FWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d");
+pub const PLATFORM_ADMIN_STR: &str = "FWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d";
 
 #[program]
 pub mod identity {

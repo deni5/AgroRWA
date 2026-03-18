@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("AgroOracleFWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d11");
+declare_id!("BL6YD7cHz2JKsQBPDu4dNWxCHgh34LBAFW86oqHKDtzQ");
 
 pub mod state;
 pub mod errors;
