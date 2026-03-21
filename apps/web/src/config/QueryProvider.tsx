@@ -4,9 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState, type ReactNode } from 'react'
 
 /**
- * Провайдер для React Query.
- * Використовуємо useState для ініціалізації клієнта, щоб він створювався 
- * лише один раз на стороні клієнта і не скидався при ре-рендері.
+ * QueryProvider для роботи з асинхронними запитами (наприклад, баланси Solana).
+ * Використання useState гарантує, що QueryClient ініціалізується лише один раз.
  */
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -14,10 +13,9 @@ export function QueryProvider({ children }: { children: ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Налаштування для Solana-запитів
-            staleTime: 30_000, // Дані вважаються свіжими 30 секунд
-            retry: 2,          // Повторити запит двічі у разі помилки RPC
-            refetchOnWindowFocus: false, // Не робити запит щоразу при фокусі вікна
+            staleTime: 30_000, 
+            retry: 2,
+            refetchOnWindowFocus: false,
           },
         },
       })
