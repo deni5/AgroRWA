@@ -8,7 +8,7 @@ export function Navbar() {
         {/* Логотип та Навігація */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
           <Link href="/" style={logoStyle}>
-            🌾 <span style={{ color: '#4ade80' }}>Agro</span>RWA
+              <span style={{ color: '#4ade80' }}>Agro</span>RWA
           </Link>
           
           <div style={menuItemsStyle}>
