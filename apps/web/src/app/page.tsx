@@ -1,12 +1,8 @@
-// apps/web/src/app/page.tsx
 import Link from 'next/link';
-import Navbar from '../components/Navbar'; // Переконайся, що шлях правильний
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen px-4 pb-12 max-w-7xl mx-auto">
-      <Header />
-
+    <div className="pb-12">
       {/* Головний банер (Hero Section) */}
       <section className="bg-white rounded-[2rem] p-10 md:p-14 mb-12 shadow-sm border border-green-50">
         <h1 className="text-4xl md:text-5xl font-bold text-[#1a4328] mb-4 leading-tight">
@@ -77,6 +73,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }
