@@ -6,7 +6,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { useVaultDeposits, useDepositLp, useRedeemLp } from '@/hooks/useVault'
 import { usePools } from '@/hooks/usePools'
 import { TxStatus } from '@/components/TxStatus'
-import { TxState, VaultDeposit } from '@/types'
+import { TxState } from '@/types'
 
 // Допоміжна функція для відліку часу
 function formatCountdown(seconds: number) {
@@ -22,8 +22,8 @@ function formatCountdown(seconds: number) {
 export default function VaultPage() {
   const { publicKey } = useWallet()
   
-  // Явно вказуємо тип для deposits, щоб уникнути помилки .length
-  const { data: deposits = [] as any[], isLoading } = useVaultDeposits()
+  // Отримуємо дані. Вказуємо початкове значення як порожній масив.
+  const { data: deposits, isLoading } = useVaultDeposits()
   const { data: pools } = usePools()
   
   const { mutateAsync: depositLp, isPending: depositing } = useDepositLp()
@@ -37,7 +37,6 @@ export default function VaultPage() {
     e.preventDefault()
     setTx({ status: 'pending' })
     try {
-      // Конвертуємо введене число у BigInt (6 знаків для SPL токенів)
       const amountRaw = Math.floor(parseFloat(depositAmount) * 1e6)
       const sig = await depositLp({
         lpMint: selectedLpMint,
@@ -73,6 +72,9 @@ export default function VaultPage() {
     )
   }
 
+  // Визначаємо, чи маємо ми масив для безпечної перевірки довжини
+  const hasDeposits = Array.isArray(deposits) && deposits.length > 0;
+
   return (
     <div className="max-w-2xl space-y-6">
       <div>
@@ -82,7 +84,6 @@ export default function VaultPage() {
         </p>
       </div>
 
-      {/* Форма депозиту */}
       <form onSubmit={handleDeposit} className="card space-y-4 bg-gray-900/50 p-6 rounded-xl border border-gray-800">
         <h2 className="text-lg font-semibold text-gray-100">Deposit LP Tokens</h2>
 
@@ -95,7 +96,7 @@ export default function VaultPage() {
             required
           >
             <option value="">— choose a pool —</option>
-            {pools?.map((p: any) => (
+            {Array.isArray(pools) && pools.map((p: any) => (
               <option key={p.lpMint} value={p.lpMint}>
                 {p.tokenAMint.slice(0, 4)}…/{p.tokenBMint.slice(0, 4)}… LP
               </option>
@@ -132,7 +133,6 @@ export default function VaultPage() {
         </button>
       </form>
 
-      {/* Список активних депозитів */}
       <div>
         <h2 className="text-xl font-semibold text-gray-100 mb-4">Your Deposits</h2>
 
@@ -144,14 +144,15 @@ export default function VaultPage() {
           </div>
         )}
 
-        {!isLoading && (!deposits || deposits.length === 0) && (
+        {/* Безпечна перевірка: не завантажується і депозитів точно немає (або не масив) */}
+        {!isLoading && !hasDeposits && (
           <div className="card text-center py-12 bg-gray-900/30 border border-dashed border-gray-800 rounded-xl text-gray-500">
             No active vault deposits.
           </div>
         )}
 
         <div className="space-y-3">
-          {deposits?.map((deposit: any) => {
+          {hasDeposits && deposits.map((deposit: any) => {
             const locked = deposit.secondsRemaining > 0
             const redeemed = deposit.redeemed
 
