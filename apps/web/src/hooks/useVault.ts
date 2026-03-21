@@ -88,7 +88,7 @@ export function useDepositLp() {
         throw new Error('Wallet not connected')
 
       const { Program, AnchorProvider } = await import('@coral-xyz/anchor')
-      const idl = (await import('@/lib/idl/vault.json')).default
+      const idl = (await import('@/lib/idl/insurance.json')).default
       const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, provider)
 
