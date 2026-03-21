@@ -77,7 +77,6 @@ export interface AssetRecord {
   verificationCount: number
   requiredVerifications: number
   createdAt: number
-  // Додаткові поля для сумісності з UI
   symbol?: string
   name?: string
   logoUrl?: string
@@ -97,9 +96,19 @@ export interface Listing {
   status: ListingStatus
   createdAt: number
   expiresAt?: number
-  // enriched
   asset?: AssetRecord
   emitterProfile?: EmitterProfile
+}
+
+// ДОДАНО: Базовий інтерфейс Pool, без якого не працював PoolWithPrice
+export interface Pool {
+  address: string;
+  tokenAMint: string;
+  tokenBMint: string;
+  lpMint: string;
+  tokenAVault: string;
+  tokenBVault: string;
+  createdAt?: number;
 }
 
 export interface TradeRecord {
@@ -135,16 +144,17 @@ export interface InsuranceFund {
   activeClaims: number
 }
 
-// ─── Vault & Staking types (ФІКС ПОМИЛКИ БІЛДУ) ───────────────────────────────
+// ─── Vault & Staking types ────────────────────────────────────────────────────
 
 export interface VaultDeposit {
-  pubkey: string
+  address: string       // Поміняв pubkey -> address для сумісності з page.tsx (deposit.address)
   owner: string
   amount: bigint
+  lpMint: string        // Додав для сумісності з page.tsx (deposit.lpMint)
+  secondsRemaining: number // Додав для сумісності з page.tsx (formatCountdown)
+  redeemed: boolean     // Додав для сумісності з page.tsx (deposit.redeemed)
   unlockTime: number
   pool: string
-  compounded: boolean
-  lastRewardUpdate?: number
 }
 
 // ─── UI types ─────────────────────────────────────────────────────────────────
@@ -164,6 +174,13 @@ export interface PythPrice {
   symbol: string
 }
 
+export interface PoolWithPrice extends Pool {
+  price?: number;
+  priceChange24h?: number;
+  volume24h?: number;
+  tvl?: number;
+}
+
 // ─── Pyth feed IDs (devnet) ───────────────────────────────────────────────────
 
 export const PYTH_FEEDS = {
@@ -172,9 +189,3 @@ export const PYTH_FEEDS = {
   'SOL/USD':    '0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d',
   'USDC/USD':   '0xeaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a',
 } as const
-export interface PoolWithPrice extends Pool {
-  price?: number;
-  priceChange24h?: number;
-  volume24h?: number;
-  tvl?: number;
-}
