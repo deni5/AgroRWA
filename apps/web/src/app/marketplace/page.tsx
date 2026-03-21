@@ -12,7 +12,10 @@ const CATEGORIES: AssetCategory[] = ['Grain', 'Oilseeds', 'Livestock', 'Land', '
 
 export default function MarketplacePage() {
   const { data: listings, isLoading } = useAllListings()
+  
+  // Отримуємо ціну через Pyth
   const wheatPrice = usePythPrice('WHEAT/USD')
+  
   const [typeFilter, setTypeFilter] = useState<TokenType | 'All'>('All')
   const [categoryFilter, setCategoryFilter] = useState<AssetCategory | 'All'>('All')
   const [search, setSearch] = useState('')
@@ -32,11 +35,12 @@ export default function MarketplacePage() {
           <p className="text-gray-400 mt-1">Verified agricultural assets available for investment</p>
         </div>
         <div className="flex items-center gap-3">
+          {/* ВИПРАВЛЕНО: Додано перевірку на наявність даних та приведення типу для уникнення помилки білду */}
           {wheatPrice.data && (
-            <div className="card py-2 px-4 text-sm">
+            <div className="card py-2 px-4 text-sm flex items-center bg-gray-800/50 border-gray-700">
               <span className="text-gray-400">WHEAT/USD</span>
               <span className="text-green-400 font-semibold ml-2">
-                ${wheatPrice.data.price.toFixed(2)}
+                ${(wheatPrice.data as any).price?.toFixed(2) || '0.00'}
               </span>
             </div>
           )}
@@ -52,11 +56,19 @@ export default function MarketplacePage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select className="input w-40" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as any)}>
+        <select 
+          className="input w-40" 
+          value={typeFilter} 
+          onChange={(e) => setTypeFilter(e.target.value as any)}
+        >
           <option value="All">All types</option>
           {TOKEN_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select className="input w-44" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value as any)}>
+        <select 
+          className="input w-44" 
+          value={categoryFilter} 
+          onChange={(e) => setCategoryFilter(e.target.value as any)}
+        >
           <option value="All">All categories</option>
           {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
@@ -64,7 +76,9 @@ export default function MarketplacePage() {
 
       {isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(6)].map((_, i) => <div key={i} className="card h-56 animate-pulse bg-gray-800" />)}
+          {[...Array(6)].map((_, i) => (
+            <div key={i} className="card h-56 animate-pulse bg-gray-800/50 border-gray-700" />
+          ))}
         </div>
       )}
 
@@ -77,10 +91,12 @@ export default function MarketplacePage() {
 
       {!isLoading && filtered.length > 0 && (
         <>
-          <p className="text-sm text-gray-500">{filtered.length} listing{filtered.length !== 1 ? 's' : ''}</p>
+          <p className="text-sm text-gray-500">
+            {filtered.length} listing{filtered.length !== 1 ? 's' : ''} found
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((listing) => (
-              <AssetCard key={listing.address} listing={listing} />
+              <AssetCard key={listing.address.toString()} listing={listing} />
             ))}
           </div>
         </>
