@@ -8,8 +8,8 @@ export function Navbar() {
       position: 'sticky',
       top: 0,
       zIndex: 100,
-      backgroundColor: '#020617', // Темно-синій фон
-      borderBottom: '1px solid rgba(74, 222, 128, 0.2)',
+      backgroundColor: '#020617', // Глибокий темний фон
+      borderBottom: '1px solid rgba(74, 222, 128, 0.2)', // Тонка зелена лінія
       padding: '0 20px'
     }}>
       <div style={{
@@ -21,9 +21,17 @@ export function Navbar() {
         justifyContent: 'space-between'
       }}>
         
-        {/* Ліва частина: Логотип та Меню */}
+        {/* Ліва частина: Логотип та Навігація */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '40px' }}>
-          <Link href="/" style={{ fontSize: '22px', fontWeight: '800', color: '#f8fafc', textDecoration: 'none' }}>
+          <Link href="/" style={{ 
+            fontSize: '22px', 
+            fontWeight: '800', 
+            color: '#f8fafc', 
+            textDecoration: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
             🌾 <span style={{ color: '#4ade80' }}>Agro</span>RWA
           </Link>
           
@@ -36,7 +44,7 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Права частина: Статус та Гаманець */}
+        {/* Права частина: Мережа та Гаманець */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ 
             fontSize: '12px', 
@@ -44,7 +52,8 @@ export function Navbar() {
             backgroundColor: 'rgba(74, 222, 128, 0.1)', 
             padding: '4px 12px', 
             borderRadius: '100px', 
-            border: '1px solid rgba(74, 222, 128, 0.2)' 
+            border: '1px solid rgba(74, 222, 128, 0.2)',
+            fontWeight: '600'
           }}>
             SOLANA Devnet
           </div>
@@ -57,7 +66,8 @@ export function Navbar() {
             fontSize: '14px', 
             fontWeight: '600', 
             border: 'none', 
-            cursor: 'pointer' 
+            cursor: 'pointer',
+            transition: 'background-color 0.2s'
           }}>
             Select Wallet
           </button>
@@ -68,10 +78,10 @@ export function Navbar() {
   );
 }
 
-// Простий стиль для посилань, щоб не дублювати код
+// Базовий стиль для посилань
 const navLinkStyle = {
   fontSize: '14px',
   fontWeight: '500',
   color: '#94a3b8',
-  textDecoration: 'none'
+  textDecoration: 'none',
 };
