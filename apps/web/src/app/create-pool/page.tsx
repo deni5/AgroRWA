@@ -6,7 +6,7 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { PublicKey } from '@solana/web3.js'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPoolPDA, POOL_PROGRAM_ID } from '@/lib/solanaConnection'
+import { getPoolPDA } from '@/lib/solanaConnection'
 import { TxStatus } from '@/components/TxStatus'
 import { TxState } from '@/types'
 import toast from 'react-hot-toast'
@@ -47,7 +47,12 @@ export default function CreatePoolPage() {
   const { mutateAsync: createPool, isPending } = useMutation({
     mutationFn: async () => {
       if (!publicKey) throw new Error('Wallet not connected')
-      const { Program, AnchorProvider, SystemProgram } = await import('@coral-xyz/anchor')
+      
+      // ВИПРАВЛЕННЯ: Імпортуємо anchor та дістаємо SystemProgram з anchor.web3
+      const anchor = await import('@coral-xyz/anchor')
+      const { Program, AnchorProvider } = anchor
+      const SystemProgram = anchor.web3.SystemProgram
+      
       const idl = (await import('@/lib/idl/marketplace.json')).default
       const provider = new AnchorProvider(connection, { publicKey } as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, provider)
@@ -55,33 +60,41 @@ export default function CreatePoolPage() {
       const mintA = new PublicKey(sortedA)
       const mintB = new PublicKey(sortedB)
 
-      const tx = await program.methods
+      // Виклик методу контракту
+      const signature = await program.methods
         .createPool()
         .accounts({
           pool: poolPDA,
           tokenAMint: mintA,
           tokenBMint: mintB,
           creator: publicKey,
-          systemProgram: PublicKey.default,
-          tokenProgram: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
-          associatedTokenProgram: new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bsn'),
-          rent: new PublicKey('SysvarRent111111111111111111111111111111111'),
+          systemProgram: SystemProgram, // Виправлено
+          tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID, // Більш надійний спосіб
+          associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
+          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         })
         .rpc()
-      return tx
+        
+      return signature
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['pools'] }),
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: (sig) => {
+      qc.invalidateQueries({ queryKey: ['pools'] })
+      setTx({ status: 'success', signature: sig })
+      toast.success('Pool created!')
+    },
+    onError: (e: Error) => {
+      setTx({ status: 'error', error: e.message })
+      toast.error(e.message)
+    },
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setTx({ status: 'pending' })
     try {
-      const sig = await createPool()
-      setTx({ status: 'success', signature: sig })
-    } catch (err: any) {
-      setTx({ status: 'error', error: err.message })
+      await createPool()
+    } catch (err) {
+      // Помилка вже обробляється в onError мутації
     }
   }
 
