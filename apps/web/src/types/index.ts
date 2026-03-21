@@ -36,7 +36,7 @@ export interface EmitterProfile {
   kycReviewedAt?: number
   ratingScore: number        // 0-1000
   ratingLabel: string        // AAA, AA, A, B, C
-  depositBps: number         // required deposit in bps
+  depositBps: number          // required deposit in bps
   totalIssued: number
   totalFulfilled: number
   totalDefaults: number
@@ -69,7 +69,7 @@ export interface AssetRecord {
   characteristics: Record<string, string>
   totalSupply: bigint
   unit: string
-  pricePerUnit: bigint       // USDC 6 decimals
+  pricePerUnit: bigint        // USDC 6 decimals
   currency: PaymentCurrency
   deliveryDate: number
   docsIpfs: string[]
@@ -77,6 +77,10 @@ export interface AssetRecord {
   verificationCount: number
   requiredVerifications: number
   createdAt: number
+  // Додаткові поля для сумісності з UI
+  symbol?: string
+  name?: string
+  logoUrl?: string
 }
 
 export interface Listing {
@@ -129,6 +133,18 @@ export interface InsuranceFund {
   totalBalance: bigint
   totalPaidOut: bigint
   activeClaims: number
+}
+
+// ─── Vault & Staking types (ФІКС ПОМИЛКИ БІЛДУ) ───────────────────────────────
+
+export interface VaultDeposit {
+  pubkey: string
+  owner: string
+  amount: bigint
+  unlockTime: number
+  pool: string
+  compounded: boolean
+  lastRewardUpdate?: number
 }
 
 // ─── UI types ─────────────────────────────────────────────────────────────────
