@@ -63,7 +63,7 @@ export default function AddLiquidityPage() {
     mutationFn: async () => {
       if (!publicKey || !pool) throw new Error('Missing data')
       const { Program, AnchorProvider } = await import('@coral-xyz/anchor')
-      const idl = (await import('@/lib/idl/liquidity_pool.json')).default
+      const idl = (await import('@/lib/idl/marketplace.json')).default
       const provider = new AnchorProvider(connection, { publicKey } as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, provider)
 
