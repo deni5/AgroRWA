@@ -2,9 +2,20 @@
   "name": "agrorwa",
   "version": "0.2.0",
   "private": true,
-  "workspaces": [
-    "apps/*"
-  ],
+  "workspaces": {
+    "packages": [
+      "apps/*"
+    ],
+    "nohoist": [
+      "**/@tanstack/react-query",
+      "**/@tanstack/react-query/**",
+      "**/@solana/wallet-adapter-*",
+      "**/@solana/wallet-adapter-*/**"
+    ]
+  },
+  "installConfig": {
+    "hoistingLimits": "workspaces"
+  },
   "scripts": {
     "dev": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=apps/web",
