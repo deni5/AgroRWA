@@ -48,10 +48,8 @@ export default function CreatePoolPage() {
     mutationFn: async () => {
       if (!publicKey) throw new Error('Wallet not connected')
       
-      // ВИПРАВЛЕННЯ: Імпортуємо anchor та дістаємо SystemProgram з anchor.web3
       const anchor = await import('@coral-xyz/anchor')
       const { Program, AnchorProvider } = anchor
-      const SystemProgram = anchor.web3.SystemProgram
       
       const idl = (await import('@/lib/idl/marketplace.json')).default
       const provider = new AnchorProvider(connection, { publicKey } as any, { commitment: 'confirmed' })
@@ -60,7 +58,7 @@ export default function CreatePoolPage() {
       const mintA = new PublicKey(sortedA)
       const mintB = new PublicKey(sortedB)
 
-      // Виклик методу контракту
+      // ВИПРАВЛЕННЯ: Використовуємо .programId або статичні константи
       const signature = await program.methods
         .createPool()
         .accounts({
@@ -68,8 +66,8 @@ export default function CreatePoolPage() {
           tokenAMint: mintA,
           tokenBMint: mintB,
           creator: publicKey,
-          systemProgram: SystemProgram, // Виправлено
-          tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID, // Більш надійний спосіб
+          systemProgram: anchor.web3.SystemProgram.programId, // ВИПРАВЛЕНО: додано .programId
+          tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
           associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         })
@@ -80,7 +78,7 @@ export default function CreatePoolPage() {
     onSuccess: (sig) => {
       qc.invalidateQueries({ queryKey: ['pools'] })
       setTx({ status: 'success', signature: sig })
-      toast.success('Pool created!')
+      toast.success('Pool created successfully!')
     },
     onError: (e: Error) => {
       setTx({ status: 'error', error: e.message })
@@ -94,7 +92,7 @@ export default function CreatePoolPage() {
     try {
       await createPool()
     } catch (err) {
-      // Помилка вже обробляється в onError мутації
+      // Помилка обробляється в mutation onError
     }
   }
 
@@ -149,9 +147,8 @@ export default function CreatePoolPage() {
           </div>
         </div>
 
-        {/* Preview */}
         {poolPDA && (
-          <div className="bg-gray-800/60 rounded-lg p-4 text-sm space-y-2">
+          <div className="bg-gray-800/60 rounded-lg p-4 text-sm space-y-2 border border-gray-700">
             <p className="text-gray-400 font-medium">Pool preview</p>
             <div className="flex justify-between">
               <span className="text-gray-500">Pool PDA</span>
@@ -164,10 +161,6 @@ export default function CreatePoolPage() {
             <div className="flex justify-between">
               <span className="text-gray-500">Sorted token B</span>
               <span className="font-mono text-gray-300 text-xs">{sortedB.slice(0, 12)}…</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Fee</span>
-              <span className="text-gray-300">0.30%</span>
             </div>
           </div>
         )}
