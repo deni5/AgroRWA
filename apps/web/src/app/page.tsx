@@ -1,6 +1,6 @@
 "use client";
 
-import Link from 'next/link';
+import Link from 'next/link'; 
 
 const TOKEN_TYPES = [
   { icon: '', name: 'Forward Token',  desc: 'Future harvest rights. Price anchored to Pyth spot × discount.', color: '#4ade80' },
