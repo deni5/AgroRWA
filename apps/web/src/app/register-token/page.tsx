@@ -7,16 +7,23 @@ import { useRegisterToken, RegisterTokenInput } from '@/hooks/useTokenRegistry'
 import { TxStatus } from '@/components/TxStatus'
 import { AssetCategory, TxState } from '@/types'
 
+// ВИПРАВЛЕНО: Категорії тепер відповідають системному типу AssetCategory
 const CATEGORIES: AssetCategory[] = [
-  'Farmland', 'GrainProduction', 'Livestock',
-  'HarvestFutures', 'AgriculturalMachinery', 'Other',
+  'Grain', 
+  'Oilseeds', 
+  'Livestock', 
+  'Land', 
+  'Equipment', 
+  'Storage', 
+  'Other'
 ]
 
+// ВИПРАВЛЕНО: Значення за замовчуванням змінено з 'Farmland' на 'Land'
 const DEFAULT_FORM: RegisterTokenInput = {
   mintAddress: '',
   title: '',
   description: '',
-  category: 'Farmland',
+  category: 'Land', 
   logoUrl: '',
   bonusEnabled: false,
   rewardMint: '',
@@ -68,7 +75,7 @@ export default function RegisterTokenPage() {
             className="input font-mono"
             placeholder="Solana pubkey of the SPL token mint"
             value={form.mintAddress}
-            onChange={(e) => set('mintAddress', e.target.value)}
+            onChange={(e) => set('mintAddress', e.target.value.trim())}
             required
           />
         </div>
@@ -95,7 +102,7 @@ export default function RegisterTokenPage() {
             >
               {CATEGORIES.map((c) => (
                 <option key={c} value={c}>
-                  {c.replace(/([A-Z])/g, ' $1').trim()}
+                  {c}
                 </option>
               ))}
             </select>
@@ -113,7 +120,10 @@ export default function RegisterTokenPage() {
             maxLength={256}
             required
           />
-          <p className="text-xs text-gray-600 mt-1">{form.description.length}/256</p>
+          <div className="flex justify-between mt-1">
+            <p className="text-xs text-gray-500 italic">This will be stored on-chain</p>
+            <p className="text-xs text-gray-600">{form.description.length}/256</p>
+          </div>
         </div>
 
         <div>
@@ -122,29 +132,29 @@ export default function RegisterTokenPage() {
             className="input"
             placeholder="https://… or IPFS CID"
             value={form.logoUrl}
-            onChange={(e) => set('logoUrl', e.target.value)}
+            onChange={(e) => set('logoUrl', e.target.value.trim())}
           />
         </div>
 
         <div className="border-t border-gray-800 pt-4">
-          <label className="flex items-center gap-3 cursor-pointer">
+          <label className="flex items-center gap-3 cursor-pointer group">
             <input
               type="checkbox"
-              className="w-4 h-4 accent-agro-500"
+              className="w-4 h-4 accent-green-500 rounded"
               checked={form.bonusEnabled}
               onChange={(e) => set('bonusEnabled', e.target.checked)}
             />
-            <span className="text-gray-300">Enable bonus rewards</span>
+            <span className="text-gray-300 group-hover:text-white transition-colors">Enable bonus rewards</span>
           </label>
 
           {form.bonusEnabled && (
-            <div className="mt-3">
+            <div className="mt-3 animate-in fade-in slide-in-from-top-2">
               <label className="label">Reward Token Mint</label>
               <input
                 className="input font-mono"
                 placeholder="SPL mint address for reward token"
                 value={form.rewardMint}
-                onChange={(e) => set('rewardMint', e.target.value)}
+                onChange={(e) => set('rewardMint', e.target.value.trim())}
               />
             </div>
           )}
@@ -152,7 +162,11 @@ export default function RegisterTokenPage() {
 
         <TxStatus tx={tx} />
 
-        <button type="submit" className="btn-primary w-full py-3" disabled={isPending}>
+        <button 
+          type="submit" 
+          className="btn-primary w-full py-3 font-bold" 
+          disabled={isPending}
+        >
           {isPending ? 'Registering…' : 'Register Asset'}
         </button>
       </form>
