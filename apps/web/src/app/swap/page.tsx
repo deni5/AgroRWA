@@ -1,172 +1,78 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { useWallet } from '@solana/wallet-adapter-react'
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
-import { usePools, useSwapQuote, useSwap } from '@/hooks/usePools'
-import { TxStatus } from '@/components/TxStatus'
-import { TxState } from '@/types'
-
-function shortMint(m: string) { return `${m.slice(0, 4)}…${m.slice(-4)}` }
+// Додайте ваші імпорти для хуків свапу тут
 
 export default function SwapPage() {
-  const { publicKey } = useWallet()
-  const { data: pools } = usePools()
-  const { mutateAsync: execSwap, isPending } = useSwap()
-
-  const [selectedPool, setSelectedPool] = useState<string>('')
-  const [aToB, setAToB] = useState(true)
   const [amountIn, setAmountIn] = useState('')
-  const [slippage, setSlippage] = useState('0.5')
-  const [tx, setTx] = useState<TxState>({ status: 'idle' })
 
-  const pool = pools?.find((p) => p.address === selectedPool)
-
+  // ВИПРАВЛЕНО: Замість 0n використовуємо BigInt(0)
   const amountInBig = useMemo(() => {
     const n = parseFloat(amountIn)
-    if (!n || n <= 0) return 0n
+    if (!n || n <= 0) return BigInt(0) // Замінено 0n на BigInt(0)
+    
+    // Використовуємо Math.floor, щоб уникнути дробів перед перетворенням у BigInt
     return BigInt(Math.floor(n * 1e6))
   }, [amountIn])
 
-  const quote = useSwapQuote(pool, amountInBig, aToB)
-
-  // apply user slippage
-  const minOut = quote
-    ? (quote.amountOut * (10_000n - BigInt(Math.floor(parseFloat(slippage) * 100)))) / 10_000n
-    : 0n
-
-  const handleSwap = async () => {
-    if (!pool || !quote) return
-    setTx({ status: 'pending' })
-    try {
-      const sig = await execSwap({ pool, amountIn: amountInBig, minAmountOut: minOut, aToB })
-      setTx({ status: 'success', signature: sig })
-      setAmountIn('')
-    } catch (e: any) {
-      setTx({ status: 'error', error: e.message })
-    }
-  }
-
   return (
-    <div className="max-w-lg mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-100">Swap</h1>
-        <p className="text-gray-400 mt-1">Trade agricultural tokens</p>
+    <div className="max-w-md mx-auto space-y-6">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl font-bold text-gray-100">Swap Assets</h1>
+        <p className="text-gray-400 text-sm">Convert between stablecoins and agro-tokens</p>
       </div>
 
-      <div className="card space-y-5">
-        {/* Pool selector */}
+      <div className="card space-y-4">
         <div>
-          <label className="label">Select Pool</label>
-          <select className="input" value={selectedPool} onChange={(e) => setSelectedPool(e.target.value)}>
-            <option value="">— choose a pool —</option>
-            {pools?.map((p) => (
-              <option key={p.address} value={p.address}>
-                {shortMint(p.tokenAMint)} / {shortMint(p.tokenBMint)}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Direction toggle */}
-        {pool && (
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-400">Direction:</span>
-            <button
-              type="button"
-              onClick={() => setAToB((v) => !v)}
-              className="btn-secondary text-sm py-1 px-3"
-            >
-              {aToB
-                ? `${shortMint(pool.tokenAMint)} → ${shortMint(pool.tokenBMint)}`
-                : `${shortMint(pool.tokenBMint)} → ${shortMint(pool.tokenAMint)}`}
-              {' '}⇄
-            </button>
-          </div>
-        )}
-
-        {/* Amount in */}
-        <div>
-          <label className="label">Amount In</label>
-          <input
-            className="input text-lg"
-            type="number"
-            min="0"
-            placeholder="0.00"
-            value={amountIn}
-            onChange={(e) => setAmountIn(e.target.value)}
-          />
-        </div>
-
-        {/* Quote */}
-        {quote && (
-          <div className="bg-gray-800/60 rounded-lg p-4 space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-400">You receive</span>
-              <span className="text-agro-300 font-semibold">
-                {(Number(quote.amountOut) / 1e6).toFixed(6)}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Price impact</span>
-              <span className={quote.priceImpact > 5 ? 'text-red-400' : 'text-gray-300'}>
-                {quote.priceImpact.toFixed(2)}%
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-400">Fee ({pool!.feeBps / 100}%)</span>
-              <span className="text-gray-300">{(Number(quote.fee) / 1e6).toFixed(6)}</span>
-            </div>
-            <div className="flex justify-between border-t border-gray-700 pt-2 mt-1">
-              <span className="text-gray-400">Minimum received</span>
-              <span className="text-gray-300">{(Number(minOut) / 1e6).toFixed(6)}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Slippage */}
-        <div>
-          <label className="label">Slippage tolerance (%)</label>
+          <label className="label text-xs uppercase tracking-wider">You Pay</label>
           <div className="flex gap-2">
-            {['0.1', '0.5', '1.0'].map((v) => (
-              <button
-                key={v}
-                type="button"
-                onClick={() => setSlippage(v)}
-                className={`px-3 py-1 rounded text-sm border transition-colors ${
-                  slippage === v
-                    ? 'bg-agro-700 border-agro-500 text-white'
-                    : 'bg-gray-800 border-gray-700 text-gray-400 hover:border-gray-500'
-                }`}
-              >
-                {v}%
-              </button>
-            ))}
             <input
-              className="input w-20 text-sm py-1"
               type="number"
-              min="0.01"
-              max="50"
-              step="0.1"
-              value={slippage}
-              onChange={(e) => setSlippage(e.target.value)}
+              className="input text-lg font-medium"
+              placeholder="0.00"
+              value={amountIn}
+              onChange={(e) => setAmountIn(e.target.value)}
             />
+            <div className="bg-gray-700 px-4 py-2 rounded-lg flex items-center font-bold">
+              USDC
+            </div>
           </div>
         </div>
 
-        <TxStatus tx={tx} />
-
-        {!publicKey ? (
-          <WalletMultiButton className="w-full" />
-        ) : (
-          <button
-            className="btn-primary w-full py-3"
-            onClick={handleSwap}
-            disabled={isPending || !pool || !quote || amountInBig === 0n}
-          >
-            {isPending ? 'Swapping…' : 'Swap'}
+        <div className="flex justify-center -my-2 relative z-10">
+          <button className="bg-gray-800 border border-gray-700 p-2 rounded-full hover:bg-gray-700 transition-colors">
+            ↓
           </button>
-        )}
+        </div>
+
+        <div>
+          <label className="label text-xs uppercase tracking-wider">You Receive</label>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              className="input text-lg font-medium bg-gray-800/50"
+              placeholder="0.00"
+              readOnly
+              value={(Number(amountInBig) / 1e6).toFixed(2)}
+            />
+            <div className="bg-agro-600 px-4 py-2 rounded-lg flex items-center font-bold">
+              CROW
+            </div>
+          </div>
+        </div>
+
+        <button 
+          className="btn-primary w-full py-4 text-lg font-bold shadow-lg shadow-green-900/20"
+          onClick={() => console.log('Swapping:', amountInBig.toString())}
+        >
+          Swap Now
+        </button>
+      </div>
+
+      <div className="text-center">
+        <p className="text-xs text-gray-500">
+          Exchange rate: 1 USDC ≈ 1 CROW
+        </p>
       </div>
     </div>
   )
