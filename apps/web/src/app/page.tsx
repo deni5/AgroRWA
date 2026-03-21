@@ -1,6 +1,6 @@
 // apps/web/src/app/page.tsx
 import Link from 'next/link';
-import Header from '@/components/Header'; // Переконайся, що шлях правильний
+import Header from '../components/Header'; // Переконайся, що шлях правильний
 
 export default function HomePage() {
   return (
