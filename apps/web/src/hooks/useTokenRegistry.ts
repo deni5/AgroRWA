@@ -109,7 +109,7 @@ export function useRegisterToken() {
 
       // Dynamic import to avoid SSR issues
       const { Program, AnchorProvider, BN } = await import('@coral-xyz/anchor')
-      const idl = (await import('@/lib/idl/agro_registry.json')).default
+      const idl = (await import('@/lib/idl/asset_registry.json')).default
 
       const provider = new AnchorProvider(connection, wallet as any, {
         commitment: 'confirmed',
