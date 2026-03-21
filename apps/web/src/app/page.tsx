@@ -1,10 +1,10 @@
 import Link from 'next/link';
 
 const TOKEN_TYPES = [
-  { icon: '🌾', name: 'Forward Token',  desc: 'Future harvest rights. Price anchored to Pyth spot × discount.', color: '#1a4328', bgColor: '#f0fdf4' },
-  { icon: '🚜', name: 'Asset Token',    desc: 'Equipment, commodity, land. Backed by oracle-appraised collateral.', color: '#1e3a8a', bgColor: '#eff6ff' },
-  { icon: '💳', name: 'Credit Token',   desc: '10-25% APY agricultural bonds with quarterly coupon payments.', color: '#92400e', bgColor: '#fffbeb' },
-  { icon: '📈', name: 'Revenue Token',  desc: 'Share of farm season revenue, auto-distributed on-chain.', color: '#581c87', bgColor: '#faf5ff' },
+  { icon: '', name: 'Forward Token',  desc: 'Future harvest rights. Price anchored to Pyth spot × discount.', color: '#1a4328', bgColor: '#f0fdf4' },
+  { icon: '', name: 'Asset Token',    desc: 'Equipment, commodity, land. Backed by oracle-appraised collateral.', color: '#1e3a8a', bgColor: '#eff6ff' },
+  { icon: '', name: 'Credit Token',   desc: '10-25% APY agricultural bonds with quarterly coupon payments.', color: '#92400e', bgColor: '#fffbeb' },
+  { icon: '', name: 'Revenue Token',  desc: 'Share of farm season revenue, auto-distributed on-chain.', color: '#581c87', bgColor: '#faf5ff' },
 ];
 
 const HOW_IT_WORKS = [
@@ -23,7 +23,7 @@ export default function HomePage() {
       {/* Hero Section */}
       <section style={{ textAlign: 'center', marginBottom: '80px', padding: '60px 20px', backgroundColor: '#f0f7f4', borderRadius: '32px' }}>
         <div style={{ display: 'inline-block', padding: '6px 16px', backgroundColor: '#dcfce7', borderRadius: '20px', fontSize: '14px', fontWeight: '600', marginBottom: '24px', border: '1px solid #bbf7d0' }}>
-          🔗 Solana Devnet · Oracle-Verified RWA
+           Solana Devnet · Oracle-Verified RWA
         </div>
         <h1 style={{ fontSize: '48px', fontWeight: '800', marginBottom: '24px', lineHeight: '1.1', color: '#1a4328' }}>
           Agricultural Assets<br />
