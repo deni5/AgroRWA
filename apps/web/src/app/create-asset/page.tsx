@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react' // Виправлено: додано useMemo
 import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { useEmitterProfile } from '@/hooks/useIdentity'
@@ -46,7 +46,7 @@ export default function CreateAssetPage() {
   // Safe calculation for Pyth price
   const suggestedPrice = useMemo(() => {
     if (form.tokenType === 'Forward' && wheatPrice.data && emitter) {
-      // Додаємо 'as any', щоб TypeScript не сварився на відсутність поля price в типі
+      // Використовуємо 'as any' для усунення помилки Property 'price' does not exist
       const currentPrice = (wheatPrice.data as any).price || 0
       return calcForwardPrice(currentPrice, 90, emitter.ratingScore)
     }
