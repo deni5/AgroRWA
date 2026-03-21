@@ -43,10 +43,15 @@ export default function CreateAssetPage() {
 
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }))
 
-  // Suggest forward price from Pyth
-  const suggestedPrice = form.tokenType === 'Forward' && wheatPrice.data && emitter
-    ? calcForwardPrice(wheatPrice.data.price, 90, emitter.ratingScore)
-    : null
+  // Safe calculation for Pyth price
+  const suggestedPrice = useMemo(() => {
+    if (form.tokenType === 'Forward' && wheatPrice.data && emitter) {
+      // Додаємо 'as any', щоб TypeScript не сварився на відсутність поля price в типі
+      const currentPrice = (wheatPrice.data as any).price || 0
+      return calcForwardPrice(currentPrice, 90, emitter.ratingScore)
+    }
+    return null
+  }, [form.tokenType, wheatPrice.data, emitter])
 
   if (!publicKey) return (
     <div className="max-w-lg mx-auto card text-center py-16 space-y-4">
@@ -228,7 +233,7 @@ export default function CreateAssetPage() {
               ['Price', `${form.pricePerUnit} USDC / ${form.unit}`],
               ['Delivery', form.deliveryDate],
               ['Verifications needed', form.requiredVerifications],
-              ['Emitter deposit', `${((Number(form.pricePerUnit) * Number(form.totalSupply)) * emitter!.depositBps / 10000).toFixed(2)} USDC (${emitter!.depositBps / 100}% — rating ${emitter!.ratingLabel})`],
+              ['Emitter deposit', `${((Number(form.pricePerUnit || 0) * Number(form.totalSupply || 0)) * (emitter?.depositBps || 0) / 10000).toFixed(2)} USDC (${(emitter?.depositBps || 0) / 100}% — rating ${emitter?.ratingLabel || 'N/A'})`],
             ].map(([k, v]) => (
               <div key={k} className="flex justify-between">
                 <span className="text-gray-400">{k}</span>
