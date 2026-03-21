@@ -1,16 +1,18 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
-    // Вказуємо явно всі шляхи зі src
-    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
+    // Стандартні шляхи (якщо конфіг лежить всередині apps/web)
     './src/**/*.{js,ts,jsx,tsx,mdx}',
-    
-    // Вказуємо шляхи БЕЗ src (на випадок, якщо Next.js створив структуру без неї)
     './app/**/*.{js,ts,jsx,tsx,mdx}',
-    './pages/**/*.{js,ts,jsx,tsx,mdx}',
     './components/**/*.{js,ts,jsx,tsx,mdx}',
+    
+    // Шляхи від кореня проєкту (якщо конфіг лежить у найголовнішій папці)
+    './apps/web/src/**/*.{js,ts,jsx,tsx,mdx}',
+    './apps/web/app/**/*.{js,ts,jsx,tsx,mdx}',
+    './apps/web/components/**/*.{js,ts,jsx,tsx,mdx}',
+    
+    // Якщо у тебе є спільні UI компоненти (Turborepo)
+    '../../packages/ui/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {},
