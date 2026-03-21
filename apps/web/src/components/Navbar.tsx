@@ -1,7 +1,13 @@
-// apps/web/src/components/Header.tsx
 "use client";
+
 import Link from 'next/link';
-import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
+import dynamic from 'next/dynamic';
+
+// Динамічний імпорт кнопки з вимкненим SSR (це вирішить проблему Vercel Error 500)
+const WalletMultiButton = dynamic(
+  () => import('@solana/wallet-adapter-react-ui').then((mod) => mod.WalletMultiButton),
+  { ssr: false }
+);
 
 export default function Header() {
   return (
@@ -29,7 +35,7 @@ export default function Header() {
           <p className="font-semibold text-[#1a4328]">SOLANA Devnet</p>
           <p className="text-xs text-gray-500">Oracle-Verified RWA 🔗</p>
         </div>
-        {/* Кнопка адаптера Solana буде стилізована автоматично, але ми можемо обгорнути її для відступів */}
+        {/* Кнопка адаптера Solana */}
         <div className="bg-white rounded-xl shadow-sm border border-green-100 overflow-hidden">
            <WalletMultiButton style={{ backgroundColor: '#1a4328', borderRadius: '0.75rem' }} />
         </div>
