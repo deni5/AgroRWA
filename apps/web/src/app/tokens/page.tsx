@@ -6,9 +6,15 @@ import { TokenCard } from '@/components/TokenCard'
 import { useAllTokens } from '@/hooks/useTokenRegistry'
 import { AssetCategory } from '@/types'
 
+// ВИПРАВЛЕНО: Категорії тепер відповідають типу AssetCategory з types/index.ts
 const CATEGORIES: AssetCategory[] = [
-  'Farmland', 'GrainProduction', 'Livestock',
-  'HarvestFutures', 'AgriculturalMachinery', 'Other',
+  'Grain', 
+  'Oilseeds', 
+  'Livestock', 
+  'Land', 
+  'Equipment', 
+  'Storage', 
+  'Other',
 ]
 
 export default function TokensPage() {
@@ -22,39 +28,44 @@ export default function TokensPage() {
       t.name.toLowerCase().includes(search.toLowerCase()) ||
       t.symbol.toLowerCase().includes(search.toLowerCase()) ||
       t.mint.toLowerCase().includes(search.toLowerCase())
+    
+    // Перевірка категорії (тепер типи збігаються)
     const matchCategory = category === 'All' || t.category === category
     return matchSearch && matchCategory
   })
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-100">Tokens</h1>
-          <p className="text-gray-400 mt-1">Registered agricultural real-world assets</p>
+          <p className="text-gray-400 mt-1">Registered agricultural real-world assets (RWA)</p>
         </div>
-        <Link href="/register-token" className="btn-primary">
+        <Link href="/register-token" className="btn-primary whitespace-nowrap text-center">
           + Register Asset
         </Link>
       </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
-        <input
-          className="input flex-1"
-          placeholder="Search by name, symbol, or address…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+        <div className="relative flex-1">
+          <input
+            className="input w-full pl-10"
+            placeholder="Search by name, symbol, or address…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">🔍</span>
+        </div>
         <select
-          className="input sm:w-56"
+          className="input sm:w-64 bg-gray-900 border-gray-800 focus:border-agro-500"
           value={category}
           onChange={(e) => setCategory(e.target.value as AssetCategory | 'All')}
         >
           <option value="All">All categories</option>
           {CATEGORIES.map((c) => (
             <option key={c} value={c}>
-              {c.replace(/([A-Z])/g, ' $1').trim()}
+              {c}
             </option>
           ))}
         </select>
@@ -64,30 +75,33 @@ export default function TokensPage() {
       {isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="card animate-pulse h-40 bg-gray-800" />
+            <div key={i} className="card animate-pulse h-48 bg-gray-800/50 border-gray-800" />
           ))}
         </div>
       )}
 
       {error && (
-        <div className="card border-red-800 text-red-400 text-center py-8">
-          Failed to load tokens. Make sure the program is deployed.
+        <div className="card border-red-900/50 bg-red-900/10 text-red-400 text-center py-10">
+          <p className="font-bold">Failed to load tokens</p>
+          <p className="text-sm opacity-80">Make sure your RPC provider is active and the program is deployed.</p>
         </div>
       )}
 
       {!isLoading && !error && filtered?.length === 0 && (
-        <div className="card text-center py-16 text-gray-500">
-          <p className="text-lg mb-2">No tokens found.</p>
-          <Link href="/register-token" className="text-agro-400 underline">
-            Register the first agricultural asset
+        <div className="card text-center py-20 border-dashed border-gray-800">
+          <p className="text-lg text-gray-400 mb-4">No assets found matching your criteria.</p>
+          <Link href="/register-token" className="btn-secondary py-2 px-6">
+            Register New Asset
           </Link>
         </div>
       )}
 
       {!isLoading && filtered && filtered.length > 0 && (
         <>
-          <p className="text-sm text-gray-500">{filtered.length} asset{filtered.length !== 1 ? 's' : ''} found</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex justify-between items-center">
+             <p className="text-sm text-gray-500">Showing {filtered.length} verified asset{filtered.length !== 1 ? 's' : ''}</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((token) => (
               <TokenCard key={token.mint} token={token} />
             ))}
