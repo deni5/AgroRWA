@@ -36,18 +36,18 @@ export default function AddLiquidityPage() {
 
   const amountABig = useMemo(() => {
     const n = parseFloat(amountA)
-    return n > 0 ? BigInt(Math.floor(n * 1e6)) : 0n
+    return n > 0 ? BigInt(Math.floor(n * 1e6)) : BigInt(0)
   }, [amountA])
 
   const amountBBig = useMemo(() => {
     const n = parseFloat(amountB)
-    return n > 0 ? BigInt(Math.floor(n * 1e6)) : 0n
+    return n > 0 ? BigInt(Math.floor(n * 1e6)) : BigInt(0)
   }, [amountB])
 
   // Estimated LP tokens
   const estimatedLp = useMemo(() => {
-    if (!pool || amountABig === 0n || amountBBig === 0n) return 0n
-    if (pool.lpSupply === 0n) {
+    if (!pool || amountABig === BigInt(0) || amountBBig === BigInt(0)) return BigInt(0)
+    if (pool.lpSupply === BigInt(0)) {
       return BigInt(Math.floor(Math.sqrt(Number(amountABig) * Number(amountBBig))))
     }
     const shareA = (amountABig * pool.lpSupply) / pool.reserveA
@@ -56,8 +56,8 @@ export default function AddLiquidityPage() {
   }, [pool, amountABig, amountBBig])
 
   const poolShare = useMemo(() => {
-    if (!pool || estimatedLp === 0n || pool.lpSupply === 0n) return 0
-    return Number((estimatedLp * 10_000n) / (pool.lpSupply + estimatedLp)) / 100
+    if (!pool || estimatedLp === BigInt(0) || pool.lpSupply === BigInt(0)) return 0
+    return Number((estimatedLp * BigInt(10000)) / (pool.lpSupply + estimatedLp)) / 100
   }, [pool, estimatedLp])
 
   const { mutateAsync, isPending } = useMutation({
@@ -143,7 +143,7 @@ export default function AddLiquidityPage() {
           </div>
         </div>
 
-        {pool && estimatedLp > 0n && (
+        {pool && estimatedLp > BigInt(0) && (
           <div className="bg-gray-800/60 rounded-lg p-4 text-sm space-y-2">
             <div className="flex justify-between">
               <span className="text-gray-400">Current price</span>
@@ -165,7 +165,7 @@ export default function AddLiquidityPage() {
         <button
           type="submit"
           className="btn-primary w-full py-3"
-          disabled={isPending || !pool || amountABig === 0n}
+          disabled={isPending || !pool || amountABig === BigInt(0)}
         >
           {isPending ? 'Adding…' : 'Add Liquidity'}
         </button>
