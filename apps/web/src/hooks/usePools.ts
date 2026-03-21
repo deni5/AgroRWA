@@ -137,7 +137,7 @@ export function useSwap() {
         throw new Error('Wallet not connected')
 
       const { Program, AnchorProvider } = await import('@coral-xyz/anchor')
-      const idl = (await import('@/lib/idl/liquidity_pool.json')).default
+      const idl = (await import('@/lib/idl/marketplace.json')).default
       const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, provider)
 
