@@ -9,6 +9,7 @@ import { usePools } from '@/hooks/usePools'
 import { getPoolPDA } from '@/lib/solanaConnection'
 import { TxStatus } from '@/components/TxStatus'
 import { TxState } from '@/types'
+// @ts-ignore
 import BN from 'bn.js'
 import toast from 'react-hot-toast'
 
