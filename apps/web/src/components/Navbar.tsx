@@ -31,7 +31,7 @@ export function Navbar() {
             letterSpacing: '0.05em',
             textTransform: 'uppercase'
           }}>
-            AGRO<span style={{ color: '#4ade80' }}>RWA</span>
+            Agro<span style={{ color: '#4ade80' }}>RWA</span>
           </Link>
           
           <div style={{ display: 'flex', gap: '32px' }}>
@@ -45,7 +45,7 @@ export function Navbar() {
         {/* Action */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
           <div style={{ fontSize: '11px', color: '#4ade80', fontWeight: '700', letterSpacing: '0.1em' }}>
-            ● SOLANA MAINNET
+            ● Solana devnet
           </div>
           <button style={{ 
             backgroundColor: '#f8fafc', 
