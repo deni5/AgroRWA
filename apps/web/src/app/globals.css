@@ -3,8 +3,44 @@
 @tailwind utilities;
 
 body {
-  /* Світло-зелений фон з нашого дизайну */
   background-color: #eaf5eb; 
-  /* Темно-зелений колір тексту за замовчуванням */
-  color: #1a4328; 
+  color: #1a4328;
+  font-family: 'Inter', sans-serif; /* Додайте цей шрифт для сучасного вигляду */
+}
+
+/* Стиль центрального вікна (як на CoW Swap) */
+.agro-container {
+  background: #ffffff;
+  border-radius: 28px;
+  box-shadow: 0 20px 50px -12px rgba(26, 67, 40, 0.08); /* М'яка зеленувата тінь */
+  border: 1px solid rgba(26, 67, 40, 0.05);
+  padding: 24px;
+}
+
+/* Стиль полів вводу (сірі блоки всередині картки) */
+.input-section {
+  background-color: #f7faf8;
+  border-radius: 20px;
+  padding: 16px;
+  border: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.input-section:hover {
+  border-color: #c6e3cc;
+}
+
+/* Кнопка гаманця та головні дії (насичений зелений) */
+.wallet-adapter-button {
+  background-color: #1a4328 !important; /* Ваш темно-зелений */
+  color: #ffffff !important;
+  border-radius: 16px !important;
+  font-weight: 600 !important;
+  height: 48px !important;
+  transition: all 0.3s ease !important;
+}
+
+.wallet-adapter-button:hover {
+  background-color: #2d6a4f !important;
+  transform: translateY(-1px);
 }
