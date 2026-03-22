@@ -1,5 +1,5 @@
 "use client";
- 
+
 import Link from 'next/link';
 
 export function Navbar() {
@@ -8,8 +8,8 @@ export function Navbar() {
       position: 'sticky',
       top: 0,
       zIndex: 100,
-      backgroundColor: '#020617', // Глибокий темний фон
-      borderBottom: '1px solid #1e293b', // Тонка межа
+      backgroundColor: '#020617', 
+      borderBottom: '1px solid #1e293b',
       padding: '0 24px'
     }}>
       <div style={{
@@ -21,7 +21,7 @@ export function Navbar() {
         justifyContent: 'space-between'
       }}>
         
-        {/* Логотип та Навігація */}
+        {/* Logo & Navigation */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '48px' }}>
           <Link href="/" style={{ 
             fontSize: '18px', 
@@ -42,17 +42,11 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Статус мережі та Кнопка */}
+        {/* Action */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-          <div style={{ 
-            fontSize: '11px', 
-            color: '#4ade80', 
-            letterSpacing: '0.1em',
-            fontWeight: '700'
-          }}>
+          <div style={{ fontSize: '11px', color: '#4ade80', fontWeight: '700', letterSpacing: '0.1em' }}>
             ● SOLANA MAINNET
           </div>
-          
           <button style={{ 
             backgroundColor: '#f8fafc', 
             color: '#020617', 
@@ -61,13 +55,11 @@ export function Navbar() {
             fontSize: '13px', 
             fontWeight: '700', 
             border: 'none', 
-            cursor: 'pointer',
-            letterSpacing: '0.02em'
+            cursor: 'pointer' 
           }}>
             CONNECT WALLET
           </button>
         </div>
-
       </div>
     </nav>
   );
