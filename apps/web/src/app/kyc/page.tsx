@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useState, useEffect } from 'react'
+import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { useRegisterEmitter } from '@/hooks/useIdentity'
 import { TxStatus } from '@/components/TxStatus'
@@ -9,7 +9,8 @@ import type { TxState } from '@/types'
 import { BN } from '@coral-xyz/anchor'
 
 export default function KycPage() {
-  const { publicKey } = useWallet()
+  const { publicKey, connected } = useWallet()
+  const { connection } = useConnection()
   const { mutateAsync, isPending } = useRegisterEmitter()
 
   const [form, setForm] = useState({
@@ -24,183 +25,156 @@ export default function KycPage() {
   
   const [tx, setTx] = useState<TxState>({ status: 'idle' })
 
+  // Очищення помилок при зміні форми
+  useEffect(() => {
+    if (tx.status === 'error') setTx({ status: 'idle' })
+  }, [form])
+
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    // Захист від відправки без підключеного гаманця
-    if (!publicKey) {
-      setTx({ status: 'error', error: 'Wallet not connected' })
+    // КРИТИЧНА ПЕРЕВІРКА: чи готовий гаманець і підключення
+    if (!connected || !publicKey) {
+      setTx({ status: 'error', error: 'Wallet not fully connected. Please reconnect.' })
       return
     }
 
     setTx({ status: 'pending' })
     
     try {
-      // 1. Очищаємо масив документів від порожніх рядків
-      const docs = [form.doc1, form.doc2, form.doc3].filter(Boolean)
-
-      // 2. Перетворюємо ЄДРПОУ/ІПН у формат BN (Big Number)
-      // Це лікує помилку "Cannot read properties of undefined (reading '_bn')"
-      const edrpouValue = form.edrpou.replace(/\s/g, '') // видаляємо пробіли
+      console.log("--- DEBUG START ---")
+      console.log("Wallet PK:", publicKey.toBase58())
       
-      if (isNaN(Number(edrpouValue))) {
-        throw new Error('ЄДРПОУ / ІПН має бути числом')
+      const docs = [form.doc1, form.doc2, form.doc3].filter(Boolean)
+      const edrpouValue = form.edrpou.replace(/\D/g, '')
+
+      if (!edrpouValue) throw new Error('ЄДРПОУ / ІПН обов’язковий')
+
+      // Створюємо BN об'єкт окремо для перевірки
+      const edrpouBN = new BN(edrpouValue)
+      console.log("BN Created:", edrpouBN.toString())
+
+      // ПІДГОТОВКА ОБ'ЄКТА ДЛЯ МУТАЦІЇ
+      const payload = {
+        legalName: form.legalName.trim(),
+        edrpou: edrpouBN, 
+        country: form.country,
+        region: form.region.trim(),
+        docsIpfs: docs,
       }
 
-      const sig = await mutateAsync({
-        legalName: form.legalName,
-        // Передаємо як BN, якщо смарт-контракт очікує u64/u128
-        // Якщо ваш хук сам робить перетворення, залиште як рядок, 
-        // але зазвичай помилка саме тут.
-        edrpou: new BN(edrpouValue), 
-        country: form.country,
-        region: form.region,
-        docsIpfs: docs,
-      })
+      console.log("Payload prepared:", payload)
 
+      const sig = await mutateAsync(payload)
+      
+      console.log("Success Sig:", sig)
       setTx({ status: 'success', signature: sig })
+
     } catch (err: any) {
-      console.error("KYC Submission Error:", err)
-      setTx({ 
-        status: 'error', 
-        error: err.message || 'Transaction failed. Check console for details.' 
-      })
+      console.error("FULL ERROR LOG:", err)
+      
+      // Обробка специфічної помилки _bn
+      const errorMessage = err.message?.includes('_bn') 
+        ? "Solana Error: One of the accounts or numbers is invalid (reading _bn)." 
+        : err.message || 'Transaction failed'
+
+      setTx({ status: 'error', error: errorMessage })
+    } finally {
+      console.log("--- DEBUG END ---")
     }
   }
 
   if (!publicKey) {
     return (
-      <div className="max-w-lg mx-auto card text-center py-16 space-y-4 bg-gray-900/20 border-dashed border-gray-800">
-        <div className="flex justify-center text-4xl mb-2">🛡️</div>
-        <p className="text-gray-400">Connect your wallet to register as an emitter in AgroRWA.</p>
+      <div className="max-w-lg mx-auto card text-center py-16 space-y-6 bg-gray-900/30 border-2 border-dashed border-gray-800">
+        <div className="text-5xl">🔑</div>
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-white">Emitter Registration</h2>
+          <p className="text-gray-400">Please connect your Solana wallet to continue.</p>
+        </div>
         <div className="flex justify-center">
-          <WalletMultiButton className="!bg-agro-600 hover:!bg-agro-700 transition-colors" />
+          <WalletMultiButton className="!bg-agro-600 hover:!bg-agro-700" />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-12">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-100">Emitter KYC Registration</h1>
-        <p className="text-gray-400 mt-1">
-          Register your farm or company to start tokenizing agricultural assets.
-          KYC review takes 1-3 business days.
-        </p>
+    <div className="max-w-2xl mx-auto space-y-6 pb-20">
+      <div className="flex items-center gap-4 border-b border-gray-800 pb-6">
+        <div className="p-3 bg-agro-600/10 rounded-xl text-3xl">🌾</div>
+        <div>
+          <h1 className="text-3xl font-bold text-gray-100">Emitter KYC Registration</h1>
+          <p className="text-gray-400">AgroRWA Identity Verification</p>
+        </div>
       </div>
 
-      <div className="card border-amber-800/30 bg-amber-900/10 text-sm text-amber-300 space-y-2 p-4 rounded-xl">
-        <p className="font-medium flex items-center gap-2">
-          <span>⚠️</span> Required documents (upload to IPFS first)
-        </p>
-        <ul className="list-disc list-inside text-amber-400/70 space-y-1 ml-2">
-          <li>ЄДРПОУ extract or passport copy</li>
-          <li>Company registration documents</li>
-          <li>Agricultural activity license (if applicable)</li>
-        </ul>
-      </div>
-
-      <form onSubmit={handleSubmit} className="card space-y-5 bg-gray-900/40 border-gray-800 p-6 rounded-2xl">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="sm:col-span-2">
-            <label className="label text-gray-400 mb-1.5 block">Legal Name / ПІБ *</label>
+      <form onSubmit={handleSubmit} className="space-y-6 bg-gray-900/20 p-8 rounded-2xl border border-gray-800">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="md:col-span-2">
+            <label className="text-sm font-medium text-gray-400 mb-2 block">Legal Name / ПІБ *</label>
             <input 
-              className="input w-full bg-gray-950 border-gray-800 focus:border-agro-500 transition-all" 
-              placeholder="ТОВ Агрофірма Зоря / Іваненко Іван Іванович"
+              className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-agro-500 outline-none" 
+              placeholder="Full name or Company name"
               value={form.legalName} 
               onChange={(e) => set('legalName', e.target.value)} 
               required 
-              maxLength={128} 
             />
           </div>
+
           <div>
-            <label className="label text-gray-400 mb-1.5 block">ЄДРПОУ / ІПН *</label>
+            <label className="text-sm font-medium text-gray-400 mb-2 block">ЄДРПОУ / ІПН *</label>
             <input 
-              className="input w-full bg-gray-950 border-gray-800 font-mono text-agro-400 focus:border-agro-500" 
+              className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-agro-400 font-mono focus:ring-2 focus:ring-agro-500 outline-none" 
               placeholder="12345678"
               value={form.edrpou} 
-              onChange={(e) => set('edrpou', e.target.value.replace(/\D/g, ''))} 
+              onChange={(e) => set('edrpou', e.target.value)} 
               required 
-              maxLength={16} 
             />
           </div>
+
           <div>
-            <label className="label text-gray-400 mb-1.5 block">Country</label>
+            <label className="text-sm font-medium text-gray-400 mb-2 block">Country</label>
             <select 
-              className="input w-full bg-gray-950 border-gray-800 focus:border-agro-500" 
+              className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-agro-500 outline-none"
               value={form.country} 
               onChange={(e) => set('country', e.target.value)}
             >
               <option value="UA">Ukraine</option>
               <option value="PL">Poland</option>
-              <option value="DE">Germany</option>
               <option value="Other">Other</option>
             </select>
           </div>
-          <div className="sm:col-span-2">
-            <label className="label text-gray-400 mb-1.5 block">Region / Oblast *</label>
+
+          <div className="md:col-span-2">
+            <label className="text-sm font-medium text-gray-400 mb-2 block">Region / Oblast *</label>
             <input 
-              className="input w-full bg-gray-950 border-gray-800 focus:border-agro-500" 
-              placeholder="Харківська область"
+              className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-agro-500 outline-none" 
+              placeholder="e.g. Kyivska"
               value={form.region} 
               onChange={(e) => set('region', e.target.value)} 
               required 
-              maxLength={64} 
             />
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-5 space-y-4">
-          <p className="text-sm font-semibold text-gray-300 uppercase tracking-wider">Document IPFS Hashes</p>
-          <div>
-            <label className="label text-gray-400 mb-1 block">Document 1 — ЄДРПОУ / Паспорт *</label>
-            <input 
-              className="input w-full bg-gray-950 border-gray-800 font-mono text-sm focus:border-agro-500" 
-              placeholder="QmXxx... or ipfs://"
-              value={form.doc1} 
-              onChange={(e) => set('doc1', e.target.value)} 
-              required 
-            />
-          </div>
-          <div>
-            <label className="label text-gray-400 mb-1 block">Document 2 — Реєстраційні документи</label>
-            <input 
-              className="input w-full bg-gray-950 border-gray-800 font-mono text-sm focus:border-agro-500" 
-              placeholder="QmXxx..."
-              value={form.doc2} 
-              onChange={(e) => set('doc2', e.target.value)} 
-            />
-          </div>
-          <div>
-            <label className="label text-gray-400 mb-1 block">Document 3 — Ліцензія / Інше</label>
-            <input 
-              className="input w-full bg-gray-950 border-gray-800 font-mono text-sm focus:border-agro-500" 
-              placeholder="QmXxx..."
-              value={form.doc3} 
-              onChange={(e) => set('doc3', e.target.value)} 
-            />
-          </div>
+        <div className="space-y-4 pt-4 border-t border-gray-800">
+          <p className="text-xs font-bold text-agro-500 uppercase tracking-widest">Verification Documents (IPFS)</p>
+          <input className="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-sm font-mono text-gray-300" placeholder="IPFS Hash 1 (Passport/Extract)" value={form.doc1} onChange={(e) => set('doc1', e.target.value)} required />
+          <input className="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-sm font-mono text-gray-300" placeholder="IPFS Hash 2 (Registration)" value={form.doc2} onChange={(e) => set('doc2', e.target.value)} />
+          <input className="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-sm font-mono text-gray-300" placeholder="IPFS Hash 3 (Optional)" value={form.doc3} onChange={(e) => set('doc3', e.target.value)} />
         </div>
 
         <TxStatus tx={tx} />
 
         <button 
           type="submit" 
-          className="btn-primary w-full py-4 text-lg font-bold shadow-lg shadow-agro-900/20 disabled:opacity-50 disabled:cursor-not-allowed" 
           disabled={isPending}
+          className="w-full bg-agro-600 hover:bg-agro-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-agro-600/20 disabled:opacity-50"
         >
-          {isPending ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Confirming on Solana...
-            </span>
-          ) : 'Submit KYC Application'}
+          {isPending ? 'Sending to Blockchain...' : 'Submit KYC Application'}
         </button>
       </form>
     </div>
