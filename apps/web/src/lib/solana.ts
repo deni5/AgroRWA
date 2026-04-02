@@ -1,4 +1,4 @@
-import { clusterApiUrl, Connection, PublicKey } from '@solana/web3.js'
+import { clusterApiUrl, Connection, PublicKey } from '@solana/web3.js' 
  
 // 1. Налаштування мережі
 // Пріоритет: .env -> Devnet RPC
