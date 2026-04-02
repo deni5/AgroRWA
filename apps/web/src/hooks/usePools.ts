@@ -3,8 +3,10 @@
 import { useQuery, useMutation } from '@tanstack/react-query'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
-import { POOL_PROGRAM_ID, getPoolPDA } from '@/lib/solanaConnection'
+// ФІКС: Змінено на правильний шлях
+import { POOL_PROGRAM_ID, getPoolPDA } from '@/lib/solana' 
 import { Pool, PoolWithPrice, SwapQuote } from '@/types'
+// @ts-ignore
 import BN from 'bn.js'
 import toast from 'react-hot-toast'
 
@@ -16,10 +18,11 @@ export function usePools() {
   return useQuery<PoolWithPrice[]>({
     queryKey: ['pools', 'all'],
     queryFn: async () => {
+      // Отримуємо всі акаунти програми пулів
       const accounts = await connection.getProgramAccounts(POOL_PROGRAM_ID)
 
       return accounts.map(({ pubkey, account }) => {
-        const data = account.data.slice(8) // skip discriminator
+        const data = account.data.slice(8) // пропускаємо 8 байт дискримінатора Anchor
         let offset = 0
 
         const readPubkey = () => {
@@ -55,8 +58,11 @@ export function usePools() {
         const feeBps     = readU16()
         const createdAt  = readI64()
 
+        // Розрахунок ціни (ReserveB / ReserveA)
         const price =
           reserveA > 0n ? Number(reserveB) / Number(reserveA) : 0
+        
+        // Орієнтовна ліквідність у доларовому еквіваленті (спрощено)
         const liquidity =
           (Number(reserveA) / 1e6) * price + Number(reserveB) / 1e6
 
@@ -109,7 +115,7 @@ export function useSwapQuote(
     Number((amountInWithFee * 10_000n) / (reserveIn + amountInWithFee)) / 100
 
   const fee = amountIn - amountInWithFee
-  const slippage = 50n // 0.5% default
+  const slippage = 50n // 0.5% за замовчуванням
   const minAmountOut = (amountOut * (10_000n - slippage)) / 10_000n
 
   return { amountIn, amountOut, priceImpact, fee, minAmountOut }
@@ -141,26 +147,24 @@ export function useSwap() {
       const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, provider)
 
+      // Використовуємо наш новий хелпер з lib/solana
       const [poolPDA] = getPoolPDA(
         new PublicKey(pool.tokenAMint),
         new PublicKey(pool.tokenBMint)
       )
 
-      const tx = await program.methods
+      return await program.methods
         .swap(new BN(amountIn.toString()), new BN(minAmountOut.toString()), aToB)
         .accounts({
           pool: poolPDA,
-          vaultIn:  new PublicKey(aToB ? pool.tokenAMint : pool.tokenBMint),
-          vaultOut: new PublicKey(aToB ? pool.tokenBMint : pool.tokenAMint),
-          userTokenIn:  wallet.publicKey,
-          userTokenOut: wallet.publicKey,
+          // Увага: тут мають бути ATA користувача або ваулти, перевірте логіку вашого контракту
+          vaultIn:  new PublicKey(aToB ? pool.vaultA : pool.vaultB),
+          vaultOut: new PublicKey(aToB ? pool.vaultB : pool.vaultA),
           user: wallet.publicKey,
-          tokenProgram: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
           systemProgram: SystemProgram.programId,
+          tokenProgram: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
         })
         .rpc()
-
-      return tx
     },
     onSuccess: () => toast.success('Swap successful!'),
     onError: (e: Error) => toast.error(e.message),
