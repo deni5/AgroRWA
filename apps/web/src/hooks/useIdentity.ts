@@ -103,10 +103,8 @@ export function useRegisterEmitter() {
 
       const [emitterPDA] = getEmitterPDA(wallet.publicKey)
 
-      console.log("Submitting registration to:", IDENTITY_PROGRAM_ID.toBase58())
-
-      // Відповідно до вашого IDL, аргументи передаються об'єктом "args"
-      // і edrpou має тип string
+      // Згідно з вашим IDL: аргументи вкладаються в об'єкт "args"
+      // edrpou має тип string, тому передаємо його без BN
       return await program.methods
         .registerEmitter({
           legalName: args.legalName,
