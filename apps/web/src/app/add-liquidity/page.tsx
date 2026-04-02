@@ -7,9 +7,10 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { PublicKey } from '@solana/web3.js'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { usePools } from '@/hooks/usePools'
-import { getPoolPDA } from '@/lib/solanaConnection'
+// ЗМІНЕНО: Імпорт тепер з @/lib/solana
+import { getPoolPDA } from '@/lib/solana' 
 import { TxStatus } from '@/components/TxStatus'
-import { TxState, PoolWithPrice } from '@/types' // Додав PoolWithPrice для точності
+import { TxState, PoolWithPrice } from '@/types'
 // @ts-ignore
 import BN from 'bn.js'
 import toast from 'react-hot-toast'
@@ -25,7 +26,6 @@ export default function AddLiquidityPage() {
   const [amountB, setAmountB] = useState('')
   const [tx, setTx] = useState<TxState>({ status: 'idle' })
 
-  // ФІКС: Безпечний пошуку пулу з приведенням до масиву
   const pool = useMemo(() => {
     if (Array.isArray(pools)) {
       return (pools as PoolWithPrice[]).find((p) => p.address === selectedPool)
@@ -33,7 +33,6 @@ export default function AddLiquidityPage() {
     return null
   }, [pools, selectedPool])
 
-  // Auto-calculate B from A based on pool price
   const handleAmountAChange = (val: string) => {
     setAmountA(val)
     if (pool && pool.price && pool.price > 0 && val) {
@@ -51,11 +50,9 @@ export default function AddLiquidityPage() {
     return n > 0 ? BigInt(Math.floor(n * 1e6)) : BigInt(0)
   }, [amountB])
 
-  // Estimated LP tokens (Додано перевірки на існування резервів)
   const estimatedLp = useMemo(() => {
     if (!pool || amountABig === BigInt(0) || amountBBig === BigInt(0)) return BigInt(0)
     
-    // Тут важливо: перевіряємо чи є резерви в типі (залежить від вашої структури Pool)
     const lpSupply = (pool as any).lpSupply || BigInt(0)
     const reserveA = (pool as any).reserveA || BigInt(1)
     const reserveB = (pool as any).reserveB || BigInt(1)
@@ -70,8 +67,11 @@ export default function AddLiquidityPage() {
 
   const poolShare = useMemo(() => {
     const lpSupply = (pool as any)?.lpSupply || BigInt(0)
-    if (!pool || estimatedLp === BigInt(0) || lpSupply === BigInt(0)) return 0
-    return Number((estimatedLp * BigInt(10000)) / (lpSupply + estimatedLp)) / 100
+    // Додана перевірка, щоб не ділити на нуль
+    if (!pool || estimatedLp === BigInt(0)) return 0
+    const totalLp = lpSupply + estimatedLp
+    if (totalLp === BigInt(0)) return 0
+    return Number((estimatedLp * BigInt(10000)) / totalLp) / 100
   }, [pool, estimatedLp])
 
   const { mutateAsync, isPending } = useMutation({
