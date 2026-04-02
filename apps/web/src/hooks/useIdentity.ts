@@ -76,24 +76,36 @@ export function useRegisterEmitter() {
   return useMutation({
     mutationFn: async (args: {
       legalName: string
-      edrpou: string
+      edrpou: any // Змінено на any, щоб приймати і рядок, і BN
       country: string
       region: string
       docsIpfs: string[]
     }) => {
       if (!wallet.publicKey) throw new Error('Wallet not connected')
 
-      const { Program, AnchorProvider } = await import('@coral-xyz/anchor')
+      // Динамічний імпорт Anchor
+      const { Program, AnchorProvider, BN } = await import('@coral-xyz/anchor')
       const idl = (await import('@/lib/idl/identity.json')).default
+      
       const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, provider)
 
       const [emitterPDA] = getEmitterPDA(wallet.publicKey)
 
+      // ПЕРЕВІРКА ТА ПЕРЕТВОРЕННЯ ЄДРПОУ (Лікуємо _bn тут)
+      let finalEdrpou = args.edrpou;
+      if (typeof args.edrpou === 'string') {
+        const clean = args.edrpou.replace(/\D/g, '');
+        if (!clean) throw new Error("EDRPOU is empty or invalid");
+        finalEdrpou = new BN(clean);
+      }
+
+      console.log("Submitting with EDRPOU BN:", finalEdrpou.toString());
+
       const tx = await program.methods
         .registerEmitter({
           legalName: args.legalName,
-          edrpou: args.edrpou,
+          edrpou: finalEdrpou, // Тепер це точно BN об'єкт
           country: args.country,
           region: args.region,
           docsIpfs: args.docsIpfs,
@@ -111,7 +123,10 @@ export function useRegisterEmitter() {
       toast.success('Registration submitted! Awaiting KYC review.')
       qc.invalidateQueries({ queryKey: ['emitter'] })
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => {
+      console.error("Mutation Error:", e);
+      toast.error(e.message);
+    },
   })
 }
 
