@@ -8,7 +8,7 @@ export const connection = new Connection(SOLANA_RPC, 'confirmed')
 export const PLATFORM_ADMIN = new PublicKey('FWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d')
 
 // --- АДРЕСИ ПРОГРАМ (IDENTITY ТЕПЕР ЖОРСТКО ПРОПИСАНА) ---
-export const IDENTITY_PROGRAM_ID = new PublicKey('56eTzHJD2rTaa8gmvWTgd71uTKoRDiBZyDkvYJwZVcRk')
+export const IDENTITY_PROGRAM_ID = new PublicKey('AUdYNM3A42jfaUkaSXeLJEXypgWFxKB1gP1hHLePkasv')
 
 // Інші програми (поки залишаємо системними, якщо немає реальних ID)
 const FALLBACK_ID = new PublicKey('11111111111111111111111111111111')
