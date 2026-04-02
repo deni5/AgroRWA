@@ -95,33 +95,26 @@ export function useRegisterEmitter() {
         throw new Error('Wallet not connected')
       }
 
-      const { Program, AnchorProvider, BN } = await import('@coral-xyz/anchor')
+      const { Program, AnchorProvider } = await import('@coral-xyz/anchor')
       const idl = (await import('@/lib/idl/identity.json')).default
       
       const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, provider)
 
-      // Важливо: перевіряємо PDA ще раз перед транзакцією
       const [emitterPDA] = getEmitterPDA(wallet.publicKey)
 
-      // Якщо в Rust `edrpou` це u64, використовуємо BN. Якщо String — передаємо args.edrpou
-      const cleanEdrpou = args.edrpou.replace(/\D/g, '')
-      const edrpouValue = cleanEdrpou ? new BN(cleanEdrpou) : new BN(0)
+      console.log("Submitting registration to:", IDENTITY_PROGRAM_ID.toBase58())
 
-      console.log("Submitting to program:", {
-        programId: IDENTITY_PROGRAM_ID.toBase58(),
-        emitterPDA: emitterPDA.toBase58(),
-        wallet: wallet.publicKey.toBase58()
-      })
-
+      // Відповідно до вашого IDL, аргументи передаються об'єктом "args"
+      // і edrpou має тип string
       return await program.methods
-        .registerEmitter(
-          args.legalName,
-          edrpouValue, // Передаємо як BN для u64
-          args.country,
-          args.region,
-          args.docsIpfs
-        )
+        .registerEmitter({
+          legalName: args.legalName,
+          edrpou: args.edrpou, 
+          country: args.country,
+          region: args.region,
+          docsIpfs: args.docsIpfs
+        })
         .accounts({
           emitterProfile: emitterPDA,
           wallet: wallet.publicKey,
@@ -130,13 +123,13 @@ export function useRegisterEmitter() {
         .rpc()
     },
     onSuccess: (sig) => {
-      toast.success('Registration submitted! Transaction: ' + sig.slice(0, 8))
+      toast.success('Registration submitted! TX: ' + sig.slice(0, 8))
       qc.invalidateQueries({ queryKey: ['emitter'] })
     },
     onError: (e: any) => {
-      console.error("Full Error Object:", e)
+      console.error("Emitter Registration Error:", e)
       const msg = e.message?.includes('_bn') 
-        ? "Identity Program ID Mismatch. Check lib/solana.ts"
+        ? "Program Address Mismatch. Verify IDENTITY_PROGRAM_ID in solana.ts"
         : e.message
       toast.error(msg)
     },
@@ -173,12 +166,12 @@ export function useRegisterOracle() {
       }
 
       return await program.methods
-        .registerOracle(
-          args.name,
-          roleMap[args.role],
-          args.credentialsIpfs,
-          new BN(args.stakeAmount.toString())
-        )
+        .registerOracle({
+          name: args.name,
+          role: roleMap[args.role],
+          credentialsIpfs: args.credentialsIpfs,
+          stakeAmount: new BN(args.stakeAmount.toString())
+        })
         .accounts({
           oracleProfile: oraclePDA,
           wallet: wallet.publicKey,
@@ -209,13 +202,12 @@ function parseEmitter(pubkey: PublicKey, data: Buffer): EmitterProfile {
   const readU32 = () => { const v = data.readUInt32LE(offset); offset += 4; return v }
   const readI64 = () => { const v = Number(data.readBigInt64LE(offset)); offset += 8; return v }
   
-  // Допоміжні для Option типів
   const readOptionPubkey = () => { const some = Boolean(data[offset++]); if (!some) return undefined; return readPubkey() }
   const readOptionI64 = () => { const some = Boolean(data[offset++]); if (!some) return undefined; return readI64() }
 
   const wallet          = readPubkey()
   const legalName       = readString()
-  const edrpou          = readString() // Змінено на String, бо зазвичай ЕДРПОУ зберігають так
+  const edrpou          = readString()
   const country         = readString()
   const region          = readString()
   const docsIpfs        = readStringVec()
