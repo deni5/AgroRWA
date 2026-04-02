@@ -92,40 +92,32 @@ export function useRegisterEmitter() {
       docsIpfs: string[]
     }) => {
       if (!wallet.publicKey || !wallet.signTransaction) {
-        throw new Error('Wallet not connected or doesn’t support signing')
+        throw new Error('Wallet not connected')
       }
 
-      // Динамічний імпорт
       const { Program, AnchorProvider, BN } = await import('@coral-xyz/anchor')
       const idl = (await import('@/lib/idl/identity.json')).default
       
       const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, provider)
 
-      // Валідація PDA
-      const pdaResult = getEmitterPDA(wallet.publicKey)
-      if (!pdaResult || !pdaResult[0]) throw new Error("Could not derive Emitter PDA")
-      const [emitterPDA] = pdaResult
+      // Важливо: перевіряємо PDA ще раз перед транзакцією
+      const [emitterPDA] = getEmitterPDA(wallet.publicKey)
 
-      // Чистимо та перетворюємо в BN
+      // Якщо в Rust `edrpou` це u64, використовуємо BN. Якщо String — передаємо args.edrpou
       const cleanEdrpou = args.edrpou.replace(/\D/g, '')
-      if (!cleanEdrpou) throw new Error("Invalid EDRPOU")
-      const edrpouBN = new BN(cleanEdrpou)
+      const edrpouValue = cleanEdrpou ? new BN(cleanEdrpou) : new BN(0)
 
-      console.log("Calling registerEmitter with:", {
-        legalName: args.legalName,
-        edrpou: edrpouBN.toString(),
-        pda: emitterPDA.toBase58()
+      console.log("Submitting to program:", {
+        programId: IDENTITY_PROGRAM_ID.toBase58(),
+        emitterPDA: emitterPDA.toBase58(),
+        wallet: wallet.publicKey.toBase58()
       })
 
-      // СПРОБА №1: Передаємо аргументи окремо (якщо в Rust: pub fn register_emitter(ctx: Context, name: String, edrpou: u64...))
-      // Якщо ваш IDL очікує структуру, Anchor зазвичай сам це обробляє, але помилка _bn каже, 
-      // що він очікує PublicKey там, де бачить об'єкт.
-      
       return await program.methods
         .registerEmitter(
           args.legalName,
-          edrpouBN,
+          edrpouValue, // Передаємо як BN для u64
           args.country,
           args.region,
           args.docsIpfs
@@ -138,15 +130,13 @@ export function useRegisterEmitter() {
         .rpc()
     },
     onSuccess: (sig) => {
-      console.log("Transaction success:", sig)
-      toast.success('Registration submitted!')
+      toast.success('Registration submitted! Transaction: ' + sig.slice(0, 8))
       qc.invalidateQueries({ queryKey: ['emitter'] })
     },
     onError: (e: any) => {
-      console.error("Emitter Registration Error:", e)
-      // Виводимо більш детальну помилку для дебагу
+      console.error("Full Error Object:", e)
       const msg = e.message?.includes('_bn') 
-        ? "Account Derivation Error: Check if IDENTITY_PROGRAM_ID is correct in lib/solana.ts"
+        ? "Identity Program ID Mismatch. Check lib/solana.ts"
         : e.message
       toast.error(msg)
     },
@@ -209,24 +199,31 @@ export function useRegisterOracle() {
 function parseEmitter(pubkey: PublicKey, data: Buffer): EmitterProfile {
   let offset = 8
   const readPubkey = () => { const pk = new PublicKey(data.slice(offset, offset + 32)).toBase58(); offset += 32; return pk }
-  const readString = () => { const len = data.readUInt32LE(offset); offset += 4; const s = new TextDecoder().decode(data.slice(offset, offset + len)); offset += len; return s }
+  const readString = () => { 
+    const len = data.readUInt32LE(offset); offset += 4; 
+    const s = new TextDecoder().decode(data.slice(offset, offset + len)); offset += len; return s 
+  }
   const readStringVec = () => { const len = data.readUInt32LE(offset); offset += 4; return Array.from({ length: len }, () => readString()) }
   const readU8 = () => data[offset++]
   const readU16 = () => { const v = data.readUInt16LE(offset); offset += 2; return v }
   const readU32 = () => { const v = data.readUInt32LE(offset); offset += 4; return v }
   const readI64 = () => { const v = Number(data.readBigInt64LE(offset)); offset += 8; return v }
-  const readOptionPubkey = () => { const some = Boolean(data[offset++]); if (!some) return undefined; const pk = new PublicKey(data.slice(offset, offset + 32)).toBase58(); offset += 32; return pk }
-  const readOptionI64 = () => { const some = Boolean(data[offset++]); if (!some) return undefined; const v = Number(data.readBigInt64LE(offset)); offset += 8; return v }
+  
+  // Допоміжні для Option типів
+  const readOptionPubkey = () => { const some = Boolean(data[offset++]); if (!some) return undefined; return readPubkey() }
+  const readOptionI64 = () => { const some = Boolean(data[offset++]); if (!some) return undefined; return readI64() }
 
   const wallet          = readPubkey()
   const legalName       = readString()
-  const edrpou          = readString()
+  const edrpou          = readString() // Змінено на String, бо зазвичай ЕДРПОУ зберігають так
   const country         = readString()
   const region          = readString()
   const docsIpfs        = readStringVec()
-  const kycStatusIdx    = readU8(); readU8()
+  
+  const kycStatusIdx    = readU8()
   const kycStatuses     = ['Pending', 'Approved', 'Rejected', 'Suspended'] as const
   const kycStatus       = kycStatuses[kycStatusIdx] ?? 'Pending'
+  
   const kycReviewer     = readOptionPubkey()
   const kycReviewedAt   = readOptionI64()
   const kycNote         = readString()
@@ -241,7 +238,7 @@ function parseEmitter(pubkey: PublicKey, data: Buffer): EmitterProfile {
 
   return {
     address: pubkey.toBase58(), wallet, legalName, edrpou, country, region,
-    docsIpfs, kycStatus, kycReviewer, kycReviewedAt, kycNote: kycNote ?? '',
+    docsIpfs, kycStatus, kycReviewer, kycReviewedAt, kycNote,
     ratingScore, ratingLabel, depositBps,
     totalIssued, totalFulfilled, totalDefaults, registeredAt,
   }
@@ -260,7 +257,7 @@ function parseOracle(pubkey: PublicKey, data: Buffer): OracleProfile {
 
   const wallet            = readPubkey()
   const name              = readString()
-  const roleIdx           = readU8(); readU8()
+  const roleIdx           = readU8()
   const roles             = ['AgroExpert', 'Notary', 'LegalAdvisor', 'Auditor'] as const
   const role              = roles[roleIdx] ?? 'AgroExpert'
   const credentialsIpfs   = readString()
