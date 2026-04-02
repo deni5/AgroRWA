@@ -3,67 +3,100 @@
 import { useState } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
-import { useRegisterToken, RegisterTokenInput } from '@/hooks/useTokenRegistry'
+import * as anchor from '@coral-xyz/anchor'
 import { TxStatus } from '@/components/TxStatus'
-import { AssetCategory, TxState } from '@/types'
+import { TxState } from '@/types'
 
-const CATEGORIES: AssetCategory[] = [
-  'Grain', 
-  'Oilseeds', 
-  'Livestock', 
-  'Land', 
-  'Equipment', 
-  'Storage', 
-  'Other'
-]
-
-const DEFAULT_FORM: RegisterTokenInput = {
-  mintAddress: '',
-  title: '',
-  description: '',
-  category: 'Land', 
-  logoUrl: '',
-  bonusEnabled: false,
-  rewardMint: '',
+// Типізація вхідних даних для KYC
+interface KYCInput {
+  legalName: string
+  taxId: string // ЄДРПОУ / ІПН
+  country: string
+  region: string
+  docIpfsHash1: string
+  docIpfsHash2: string
+  docIpfsHash3: string
 }
 
-export default function RegisterTokenPage() {
-  const { publicKey } = useWallet()
-  const { mutateAsync, isPending } = useRegisterToken()
-  const [form, setForm] = useState<RegisterTokenInput>(DEFAULT_FORM)
+const DEFAULT_FORM: KYCInput = {
+  legalName: '',
+  taxId: '',
+  country: 'Ukraine',
+  region: '',
+  docIpfsHash1: '',
+  docIpfsHash2: '',
+  docIpfsHash3: '',
+}
+
+export default function EmitterKYCPage() {
+  const { publicKey, sendTransaction } = useWallet()
+  const [form, setForm] = useState<KYCInput>(DEFAULT_FORM)
   const [tx, setTx] = useState<TxState>({ status: 'idle' })
 
-  const set = (field: keyof RegisterTokenInput, value: unknown) =>
+  // Функція для оновлення полів
+  const setField = (field: keyof KYCInput, value: string) =>
     setForm((prev) => ({ ...prev, [field]: value }))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Проста валідація адреси
-    if (form.mintAddress.length < 32) {
-      setTx({ status: 'error', error: 'Invalid Mint Address' })
+
+    // 1. Головний захист від 'undefined' (читання _bn)
+    if (!publicKey) {
+      setTx({ status: 'error', error: 'Wallet not connected' })
       return
     }
 
     setTx({ status: 'pending' })
+
     try {
-      const sig = await mutateAsync(form)
-      setTx({ status: 'success', signature: sig })
+      // 2. Валідація податкового номера (має бути числом)
+      const taxIdNum = parseInt(form.taxId)
+      if (isNaN(taxIdNum)) {
+        throw new Error('Tax ID (ЄДРПОУ/ІПН) must be a valid number')
+      }
+
+      // 3. Перетворення в Big Number для Anchor
+      // Саме тут зазвичай виникає помилка _bn, якщо передати не валідний об'єкт
+      const taxIdBN = new anchor.BN(taxIdNum)
+
+      console.log("Submitting KYC for:", publicKey.toBase58())
+      
+      /* Тут викликається твій хук або метод контракту. 
+         Приклад передачі даних у контракт через програму:
+         const sig = await program.methods
+           .registerEmitter(form.legalName, taxIdBN, form.country, form.region, [form.docIpfsHash1, form.docIpfsHash2, form.docIpfsHash3])
+           .accounts({
+             emitter: publicKey,
+             systemProgram: anchor.web3.SystemProgram.programId,
+           })
+           .rpc()
+      */
+
+      // Імітація виклику (заміни на реальний mutateAsync або program.rpc)
+      // const sig = await mutateAsync({ ...form, taxId: taxIdBN }) 
+      
+      // Для тестування виведемо в консоль успіх
+      console.log("Form successfully processed with BN:", taxIdBN.toString())
+      
+      setTx({ status: 'success', signature: 'SIMULATED_SIG_SUCCESS' })
       setForm(DEFAULT_FORM)
     } catch (err: any) {
-      setTx({ status: 'error', error: err.message || 'Transaction failed' })
+      console.error("KYC Error Details:", err)
+      // Виводимо зрозумілу помилку замість [object Object]
+      setTx({ status: 'error', error: err.message || 'KYC Registration failed' })
     }
   }
 
+  // Екран, якщо гаманець не підключений
   if (!publicKey) {
     return (
-      <div className="max-w-lg mx-auto card text-center py-20 space-y-6 border-dashed border-gray-800">
+      <div className="max-w-lg mx-auto card text-center py-20 space-y-6 border-dashed border-gray-800 bg-gray-900/20">
         <div className="flex justify-center">
-          <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center text-3xl">🪪</div>
+          <div className="w-16 h-16 bg-gray-900 rounded-full flex items-center justify-center text-3xl">🛡️</div>
         </div>
         <div className="space-y-2">
-          <h2 className="text-xl font-bold text-gray-100">Wallet Required</h2>
-          <p className="text-gray-400">Please connect your wallet to access the registration portal.</p>
+          <h2 className="text-xl font-bold text-gray-100">KYC Verification Required</h2>
+          <p className="text-gray-400">Please connect your authorized wallet to start the emitter registration.</p>
         </div>
         <div className="flex justify-center">
           <WalletMultiButton className="!bg-agro-600 hover:!bg-agro-700" />
@@ -76,130 +109,101 @@ export default function RegisterTokenPage() {
     <div className="max-w-2xl mx-auto space-y-8 pb-12">
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 bg-agro-600/20 border border-agro-500/50 rounded-xl flex items-center justify-center text-2xl">
-          🌱
+          📑
         </div>
         <div>
-          <h1 className="text-3xl font-bold text-gray-100">Register Asset</h1>
-          <p className="text-gray-400">Tokenize your agricultural real-world assets</p>
+          <h1 className="text-3xl font-bold text-gray-100">Emitter KYC Registration</h1>
+          <p className="text-gray-400">Register your farm or company to start tokenizing assets</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="card space-y-6 bg-gray-900/40 border-gray-800">
-        <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="card space-y-6 bg-gray-900/40 border-gray-800 p-6 rounded-2xl">
+        <div className="grid grid-cols-1 gap-6">
+          {/* Legal Name */}
           <div>
-            <label className="label text-gray-400">Token Mint Address <span className="text-agro-500">*</span></label>
+            <label className="label text-gray-400">Legal Name / ПІБ *</label>
             <input
-              className="input font-mono focus:border-agro-500"
-              placeholder="Ex: 7xKX...j8Pn"
-              value={form.mintAddress}
-              onChange={(e) => set('mintAddress', e.target.value.trim())}
+              className="input focus:border-agro-500"
+              placeholder="Full Legal Name"
+              value={form.legalName}
+              onChange={(e) => setField('legalName', e.target.value)}
               required
             />
           </div>
 
+          {/* Tax ID */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             <div>
-              <label className="label text-gray-400">Asset Title <span className="text-agro-500">*</span></label>
+              <label className="label text-gray-400">ЄДРПОУ / ІПН *</label>
               <input
                 className="input focus:border-agro-500"
-                placeholder="e.g. Corn Batch #42"
-                value={form.title}
-                onChange={(e) => set('title', e.target.value)}
-                maxLength={64}
+                placeholder="12345678"
+                type="text"
+                value={form.taxId}
+                onChange={(e) => setField('taxId', e.target.value.replace(/\D/g, ''))} // Тільки цифри
                 required
               />
             </div>
             <div>
-              <label className="label text-gray-400">Category <span className="text-agro-500">*</span></label>
+              <label className="label text-gray-400">Country</label>
               <select
                 className="input focus:border-agro-500 bg-gray-950"
-                value={form.category}
-                onChange={(e) => set('category', e.target.value as AssetCategory)}
-                required
+                value={form.country}
+                onChange={(e) => setField('country', e.target.value)}
               >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
+                <option value="Ukraine">Ukraine</option>
+                <option value="Poland">Poland</option>
+                <option value="Other">Other</option>
               </select>
             </div>
           </div>
 
+          {/* Region */}
           <div>
-            <label className="label text-gray-400">Description <span className="text-agro-500">*</span></label>
-            <textarea
-              className="input resize-none focus:border-agro-500"
-              rows={4}
-              placeholder="Detailed information about the asset, harvest date, location..."
-              value={form.description}
-              onChange={(e) => set('description', e.target.value)}
-              maxLength={256}
-              required
-            />
-            <div className="flex justify-between mt-1 px-1">
-              <p className="text-[10px] text-gray-600 uppercase font-bold tracking-tighter">On-chain storage</p>
-              <p className={`text-xs ${form.description.length > 240 ? 'text-red-500' : 'text-gray-600'}`}>
-                {form.description.length}/256
-              </p>
-            </div>
-          </div>
-
-          <div>
-            <label className="label text-gray-400">Logo or Image URL</label>
+            <label className="label text-gray-400">Region / Oblast *</label>
             <input
               className="input focus:border-agro-500"
-              placeholder="https://arweave.net/... or ipfs://"
-              value={form.logoUrl}
-              onChange={(e) => set('logoUrl', e.target.value.trim())}
+              placeholder="e.g. Kyivska oblast"
+              value={form.region}
+              onChange={(e) => setField('region', e.target.value)}
+              required
             />
           </div>
 
-          <div className="pt-4 border-t border-gray-800">
-            <div className="flex items-center justify-between bg-black/20 p-4 rounded-xl border border-gray-800">
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="bonus-toggle"
-                  className="w-5 h-5 accent-agro-500 cursor-pointer"
-                  checked={form.bonusEnabled}
-                  onChange={(e) => set('bonusEnabled', e.target.checked)}
-                />
-                <label htmlFor="bonus-toggle" className="text-sm font-medium text-gray-300 cursor-pointer">
-                  Enable Staking Bonus Rewards
-                </label>
-              </div>
-              <span className="text-[10px] bg-agro-500/10 text-agro-400 px-2 py-0.5 rounded border border-agro-500/20">Optional</span>
-            </div>
-
-            {form.bonusEnabled && (
-              <div className="mt-4 p-4 bg-agro-900/10 border border-agro-800/50 rounded-xl animate-in fade-in zoom-in-95">
-                <label className="label text-agro-400">Reward Token Mint Address</label>
-                <input
-                  className="input font-mono border-agro-900 focus:border-agro-500"
-                  placeholder="The mint address of the reward token"
-                  value={form.rewardMint}
-                  onChange={(e) => set('rewardMint', e.target.value.trim())}
-                />
-              </div>
-            )}
+          {/* IPFS Hashes */}
+          <div className="space-y-4 pt-4 border-t border-gray-800">
+            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Document IPFS Hashes</h3>
+            <input
+              className="input text-xs font-mono"
+              placeholder="Document 1: Passport/Extract"
+              value={form.docIpfsHash1}
+              onChange={(e) => setField('docIpfsHash1', e.target.value)}
+              required
+            />
+            <input
+              className="input text-xs font-mono"
+              placeholder="Document 2: Registration"
+              value={form.docIpfsHash2}
+              onChange={(e) => setField('docIpfsHash2', e.target.value)}
+              required
+            />
+            <input
+              className="input text-xs font-mono"
+              placeholder="Document 3: License (Optional)"
+              value={form.docIpfsHash3}
+              onChange={(e) => setField('docIpfsHash3', e.target.value)}
+            />
           </div>
         </div>
 
         <TxStatus tx={tx} />
 
-        <button 
-          type="submit" 
-          className="btn-primary w-full py-4 text-lg font-bold shadow-lg shadow-agro-900/20" 
-          disabled={isPending}
+        <button
+          type="submit"
+          className="btn-primary w-full py-4 text-lg font-bold"
+          disabled={tx.status === 'pending'}
         >
-          {isPending ? (
-            <span className="flex items-center justify-center gap-2">
-              <svg className="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Confirming on Solana...
-            </span>
-          ) : 'Register Asset'}
+          {tx.status === 'pending' ? 'Processing...' : 'Submit KYC Application'}
         </button>
       </form>
     </div>
