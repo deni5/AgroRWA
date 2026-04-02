@@ -17,10 +17,15 @@ export function useEmitterProfile(wallet?: string) {
     enabled: !!wallet,
     queryFn: async () => {
       if (!wallet) return null
-      const [pda] = getEmitterPDA(new PublicKey(wallet))
-      const info = await connection.getAccountInfo(pda)
-      if (!info) return null
-      return parseEmitter(pda, info.data)
+      try {
+        const [pda] = getEmitterPDA(new PublicKey(wallet))
+        const info = await connection.getAccountInfo(pda)
+        if (!info) return null
+        return parseEmitter(pda, info.data)
+      } catch (e) {
+        console.error("Error fetching emitter:", e)
+        return null
+      }
     },
     staleTime: 30_000,
   })
@@ -36,10 +41,15 @@ export function useOracleProfile(wallet?: string) {
     enabled: !!wallet,
     queryFn: async () => {
       if (!wallet) return null
-      const [pda] = getOraclePDA(new PublicKey(wallet))
-      const info = await connection.getAccountInfo(pda)
-      if (!info) return null
-      return parseOracle(pda, info.data)
+      try {
+        const [pda] = getOraclePDA(new PublicKey(wallet))
+        const info = await connection.getAccountInfo(pda)
+        if (!info) return null
+        return parseOracle(pda, info.data)
+      } catch (e) {
+        console.error("Error fetching oracle:", e)
+        return null
+      }
     },
     staleTime: 30_000,
   })
@@ -54,7 +64,7 @@ export function useAllOracles() {
     queryKey: ['oracles', 'all'],
     queryFn: async () => {
       const accounts = await connection.getProgramAccounts(IDENTITY_PROGRAM_ID, {
-        filters: [{ memcmp: { offset: 8 + 32 + 4, bytes: '' } }], // all oracle accounts
+        filters: [{ memcmp: { offset: 8 + 32 + 4, bytes: '' } }], 
       })
       return accounts
         .map(({ pubkey, account }) => {
@@ -76,56 +86,69 @@ export function useRegisterEmitter() {
   return useMutation({
     mutationFn: async (args: {
       legalName: string
-      edrpou: any // Змінено на any, щоб приймати і рядок, і BN
+      edrpou: string
       country: string
       region: string
       docsIpfs: string[]
     }) => {
-      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      if (!wallet.publicKey || !wallet.signTransaction) {
+        throw new Error('Wallet not connected or doesn’t support signing')
+      }
 
-      // Динамічний імпорт Anchor
+      // Динамічний імпорт
       const { Program, AnchorProvider, BN } = await import('@coral-xyz/anchor')
       const idl = (await import('@/lib/idl/identity.json')).default
       
       const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, provider)
 
-      const [emitterPDA] = getEmitterPDA(wallet.publicKey)
+      // Валідація PDA
+      const pdaResult = getEmitterPDA(wallet.publicKey)
+      if (!pdaResult || !pdaResult[0]) throw new Error("Could not derive Emitter PDA")
+      const [emitterPDA] = pdaResult
 
-      // ПЕРЕВІРКА ТА ПЕРЕТВОРЕННЯ ЄДРПОУ (Лікуємо _bn тут)
-      let finalEdrpou = args.edrpou;
-      if (typeof args.edrpou === 'string') {
-        const clean = args.edrpou.replace(/\D/g, '');
-        if (!clean) throw new Error("EDRPOU is empty or invalid");
-        finalEdrpou = new BN(clean);
-      }
+      // Чистимо та перетворюємо в BN
+      const cleanEdrpou = args.edrpou.replace(/\D/g, '')
+      if (!cleanEdrpou) throw new Error("Invalid EDRPOU")
+      const edrpouBN = new BN(cleanEdrpou)
 
-      console.log("Submitting with EDRPOU BN:", finalEdrpou.toString());
+      console.log("Calling registerEmitter with:", {
+        legalName: args.legalName,
+        edrpou: edrpouBN.toString(),
+        pda: emitterPDA.toBase58()
+      })
 
-      const tx = await program.methods
-        .registerEmitter({
-          legalName: args.legalName,
-          edrpou: finalEdrpou, // Тепер це точно BN об'єкт
-          country: args.country,
-          region: args.region,
-          docsIpfs: args.docsIpfs,
-        })
+      // СПРОБА №1: Передаємо аргументи окремо (якщо в Rust: pub fn register_emitter(ctx: Context, name: String, edrpou: u64...))
+      // Якщо ваш IDL очікує структуру, Anchor зазвичай сам це обробляє, але помилка _bn каже, 
+      // що він очікує PublicKey там, де бачить об'єкт.
+      
+      return await program.methods
+        .registerEmitter(
+          args.legalName,
+          edrpouBN,
+          args.country,
+          args.region,
+          args.docsIpfs
+        )
         .accounts({
           emitterProfile: emitterPDA,
           wallet: wallet.publicKey,
           systemProgram: SystemProgram.programId,
         })
         .rpc()
-
-      return tx
     },
-    onSuccess: () => {
-      toast.success('Registration submitted! Awaiting KYC review.')
+    onSuccess: (sig) => {
+      console.log("Transaction success:", sig)
+      toast.success('Registration submitted!')
       qc.invalidateQueries({ queryKey: ['emitter'] })
     },
-    onError: (e: Error) => {
-      console.error("Mutation Error:", e);
-      toast.error(e.message);
+    onError: (e: any) => {
+      console.error("Emitter Registration Error:", e)
+      // Виводимо більш детальну помилку для дебагу
+      const msg = e.message?.includes('_bn') 
+        ? "Account Derivation Error: Check if IDENTITY_PROGRAM_ID is correct in lib/solana.ts"
+        : e.message
+      toast.error(msg)
     },
   })
 }
@@ -159,24 +182,22 @@ export function useRegisterOracle() {
         Auditor: { auditor: {} },
       }
 
-      const tx = await program.methods
-        .registerOracle({
-          name: args.name,
-          role: roleMap[args.role],
-          credentialsIpfs: args.credentialsIpfs,
-          stakeAmount: new BN(args.stakeAmount.toString()),
-        })
+      return await program.methods
+        .registerOracle(
+          args.name,
+          roleMap[args.role],
+          args.credentialsIpfs,
+          new BN(args.stakeAmount.toString())
+        )
         .accounts({
           oracleProfile: oraclePDA,
           wallet: wallet.publicKey,
           systemProgram: SystemProgram.programId,
         })
         .rpc()
-
-      return tx
     },
     onSuccess: () => {
-      toast.success('Oracle registration submitted! Awaiting activation.')
+      toast.success('Oracle registered!')
       qc.invalidateQueries({ queryKey: ['oracle'] })
     },
     onError: (e: Error) => toast.error(e.message),
@@ -187,7 +208,6 @@ export function useRegisterOracle() {
 
 function parseEmitter(pubkey: PublicKey, data: Buffer): EmitterProfile {
   let offset = 8
-
   const readPubkey = () => { const pk = new PublicKey(data.slice(offset, offset + 32)).toBase58(); offset += 32; return pk }
   const readString = () => { const len = data.readUInt32LE(offset); offset += 4; const s = new TextDecoder().decode(data.slice(offset, offset + len)); offset += len; return s }
   const readStringVec = () => { const len = data.readUInt32LE(offset); offset += 4; return Array.from({ length: len }, () => readString()) }
@@ -204,7 +224,7 @@ function parseEmitter(pubkey: PublicKey, data: Buffer): EmitterProfile {
   const country         = readString()
   const region          = readString()
   const docsIpfs        = readStringVec()
-  const kycStatusIdx    = readU8(); readU8() // enum discriminator
+  const kycStatusIdx    = readU8(); readU8()
   const kycStatuses     = ['Pending', 'Approved', 'Rejected', 'Suspended'] as const
   const kycStatus       = kycStatuses[kycStatusIdx] ?? 'Pending'
   const kycReviewer     = readOptionPubkey()
@@ -215,7 +235,6 @@ function parseEmitter(pubkey: PublicKey, data: Buffer): EmitterProfile {
   const totalFulfilled  = readU32()
   const totalDefaults   = readU8()
   const registeredAt    = readI64()
-  readU8() // bump
 
   const ratingLabel = ratingScore >= 900 ? 'AAA' : ratingScore >= 700 ? 'AA' : ratingScore >= 500 ? 'A' : ratingScore >= 300 ? 'B' : 'C'
   const depositBps  = ratingScore >= 900 ? 200  : ratingScore >= 700 ? 500  : ratingScore >= 500 ? 800 : ratingScore >= 300 ? 1200 : 2000
@@ -230,7 +249,6 @@ function parseEmitter(pubkey: PublicKey, data: Buffer): EmitterProfile {
 
 function parseOracle(pubkey: PublicKey, data: Buffer): OracleProfile {
   let offset = 8
-
   const readPubkey  = () => { const pk = new PublicKey(data.slice(offset, offset + 32)).toBase58(); offset += 32; return pk }
   const readString  = () => { const len = data.readUInt32LE(offset); offset += 4; const s = new TextDecoder().decode(data.slice(offset, offset + len)); offset += len; return s }
   const readU8      = () => data[offset++]
@@ -252,7 +270,6 @@ function parseOracle(pubkey: PublicKey, data: Buffer): OracleProfile {
   const verifiedCount     = readU32()
   const disputeCount      = readU16()
   const registeredAt      = readI64()
-  readU8() // bump
 
   return {
     address: pubkey.toBase58(), wallet, name, role, credentialsIpfs,
