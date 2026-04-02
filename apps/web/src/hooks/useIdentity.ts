@@ -103,11 +103,11 @@ export function useRegisterEmitter() {
 
       const [emitterPDA] = getEmitterPDA(wallet.publicKey)
 
-      // ПЕРЕДАЧА АРГУМЕНТІВ: Згідно з вашим IDL, очікується об'єкт { args: {...} }
+      // ПЕРЕДАЧА АРГУМЕНТІВ: Передаємо як об'єкт "args", edrpou як String
       return await program.methods
         .registerEmitter({
           legalName: args.legalName,
-          edrpou: args.edrpou, // Тут передаємо String (без BN)
+          edrpou: args.edrpou, 
           country: args.country,
           region: args.region,
           docsIpfs: args.docsIpfs
@@ -125,7 +125,6 @@ export function useRegisterEmitter() {
     },
     onError: (e: any) => {
       console.error("Emitter Registration Error:", e)
-      // Виводимо підказку, якщо бачимо характерну помилку адреси
       const msg = e.message?.includes('_bn') 
         ? "Program Address Mismatch. Verify IDENTITY_PROGRAM_ID in lib/solana.ts"
         : e.message
@@ -205,7 +204,7 @@ function parseEmitter(pubkey: PublicKey, data: Buffer): EmitterProfile {
 
   const wallet          = readPubkey()
   const legalName       = readString()
-  const edrpou          = readString() // Читаємо як рядок згідно з IDL
+  const edrpou          = readString() 
   const country         = readString()
   const region          = readString()
   const docsIpfs        = readStringVec()
