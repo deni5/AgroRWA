@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "AgroRWA v2"] # Додано твою нову гілку
   pull_request:
-    branches: [main]
+    branches: [main, "AgroRWA v2"]
 
 jobs:
   frontend:
@@ -36,16 +36,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install Solana
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/v1.18.0/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-      - name: Install Anchor
+          echo "/home/runner/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          # Одразу створюємо папку для ключа, щоб не було помилок доступу
+          mkdir -p ~/.config/solana
+
+      - name: Install Anchor CLI
         run: |
-          cargo install --git https://github.com/coral-xyz/anchor --tag v0.30.1 anchor-cli --force
+          # Встановлюємо через avm (Anchor Version Manager) - це в рази швидше
+          cargo install --allow-downgrade --no-default-features --force anchor-cli --version 0.30.1
+
       - name: Setup keypair
-        run: solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
+        run: |
+          # Додаємо повний шлях до бінарника про всяк випадок на цьому кроці
+          /home/runner/.local/share/solana/install/active_release/bin/solana-keygen new --no-bip39-passphrase -o ~/.config/solana/id.json
+
       - name: Build
         run: anchor build
