@@ -6,7 +6,8 @@ import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { PublicKey } from '@solana/web3.js'
 import { useConnection } from '@solana/wallet-adapter-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { getPoolPDA } from '@/lib/solanaConnection'
+// ФІКС: Оновлено шлях імпорту
+import { getPoolPDA } from '@/lib/solana'
 import { TxStatus } from '@/components/TxStatus'
 import { TxState } from '@/types'
 import toast from 'react-hot-toast'
@@ -40,14 +41,17 @@ export default function CreatePoolPage() {
       ? sortMints(tokenA, tokenB)
       : ['', '']
 
-  const [poolPDA] = sortedA
+  const poolPDAData = sortedA && sortedB
     ? getPoolPDA(new PublicKey(sortedA), new PublicKey(sortedB))
-    : [null]
+    : null
+
+  const poolPDA = poolPDAData ? poolPDAData[0] : null
 
   const { mutateAsync: createPool, isPending } = useMutation({
     mutationFn: async () => {
       if (!publicKey) throw new Error('Wallet not connected')
       
+      // Динамічний імпорт для Next.js SSR
       const anchor = await import('@coral-xyz/anchor')
       const { Program, AnchorProvider } = anchor
       
@@ -55,10 +59,11 @@ export default function CreatePoolPage() {
       const provider = new AnchorProvider(connection, { publicKey } as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, provider)
 
+      if (!poolPDA) throw new Error('Invalid pool PDA')
+
       const mintA = new PublicKey(sortedA)
       const mintB = new PublicKey(sortedB)
 
-      // ВИПРАВЛЕННЯ: Використовуємо .programId або статичні константи
       const signature = await program.methods
         .createPool()
         .accounts({
@@ -66,9 +71,9 @@ export default function CreatePoolPage() {
           tokenAMint: mintA,
           tokenBMint: mintB,
           creator: publicKey,
-          systemProgram: anchor.web3.SystemProgram.programId, // ВИПРАВЛЕНО: додано .programId
-          tokenProgram: anchor.utils.token.TOKEN_PROGRAM_ID,
-          associatedTokenProgram: anchor.utils.token.ASSOCIATED_PROGRAM_ID,
+          systemProgram: anchor.web3.SystemProgram.programId,
+          tokenProgram: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+          associatedTokenProgram: new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bsn'),
           rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         })
         .rpc()
@@ -92,7 +97,7 @@ export default function CreatePoolPage() {
     try {
       await createPool()
     } catch (err) {
-      // Помилка обробляється в mutation onError
+      // Оброблено в onError
     }
   }
 
