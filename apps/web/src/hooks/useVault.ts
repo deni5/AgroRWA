@@ -3,8 +3,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useConnection, useWallet } from '@solana/wallet-adapter-react'
 import { PublicKey, SystemProgram } from '@solana/web3.js'
-import { VAULT_PROGRAM_ID, getVaultDepositPDA } from '@/lib/solanaConnection'
+// ФІКС: Змінено на правильний шлях
+import { VAULT_PROGRAM_ID, getVaultDepositPDA } from '@/lib/solana' 
 import { VaultDeposit } from '@/types'
+// @ts-ignore
 import BN from 'bn.js'
 import toast from 'react-hot-toast'
 
@@ -20,16 +22,17 @@ export function useVaultDeposits() {
     queryFn: async () => {
       if (!publicKey) return []
 
+      // Фільтруємо акаунти, щоб знайти лише ті, що належать поточному гаманцю
       const accounts = await connection.getProgramAccounts(VAULT_PROGRAM_ID, {
         filters: [
-          { memcmp: { offset: 8, bytes: publicKey.toBase58() } }, // user field
+          { memcmp: { offset: 8, bytes: publicKey.toBase58() } }, // поле user в структурі акаунта
         ],
       })
 
       const now = Math.floor(Date.now() / 1000)
 
       return accounts.map(({ pubkey, account }) => {
-        const data = account.data.slice(8)
+        const data = account.data.slice(8) // пропускаємо Anchor дискримінатор
         let offset = 0
 
         const readPubkey = () => {
@@ -48,11 +51,11 @@ export function useVaultDeposits() {
           return val
         }
 
-        const user       = readPubkey()
-        const lpMint     = readPubkey()
-        const amount     = readU64()
+        const user        = readPubkey()
+        const lpMint      = readPubkey()
+        const amount      = readU64()
         const unlockTime = readI64()
-        const redeemed   = Boolean(data[offset++])
+        const redeemed    = Boolean(data[offset++])
 
         return {
           address: pubkey.toBase58(),
@@ -95,7 +98,7 @@ export function useDepositLp() {
       const lpMintPK = new PublicKey(lpMint)
       const [depositPDA] = getVaultDepositPDA(wallet.publicKey, lpMintPK)
 
-      const tx = await program.methods
+      return await program.methods
         .depositLp(new BN(amount.toString()))
         .accounts({
           vaultDeposit: depositPDA,
@@ -106,11 +109,9 @@ export function useDepositLp() {
           associatedTokenProgram: new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bsn'),
         })
         .rpc()
-
-      return tx
     },
-    onSuccess: (sig) => {
-      toast.success('LP tokens locked for 30 days!')
+    onSuccess: () => {
+      toast.success('LP tokens locked successfully!')
       qc.invalidateQueries({ queryKey: ['vault'] })
     },
     onError: (e: Error) => toast.error(e.message),
@@ -137,7 +138,7 @@ export function useRedeemLp() {
       const lpMintPK = new PublicKey(deposit.lpMint)
       const [depositPDA] = getVaultDepositPDA(wallet.publicKey, lpMintPK)
 
-      const tx = await program.methods
+      return await program.methods
         .redeemLp()
         .accounts({
           vaultDeposit: depositPDA,
@@ -147,8 +148,6 @@ export function useRedeemLp() {
           tokenProgram: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
         })
         .rpc()
-
-      return tx
     },
     onSuccess: () => {
       toast.success('LP tokens redeemed!')
