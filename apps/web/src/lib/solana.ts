@@ -11,7 +11,7 @@ const FALLBACK_ID = '11111111111111111111111111111111'
 
 // 3. АДРЕСИ ПРОГРАМ
 // ВАЖЛИВО: IDENTITY_PROGRAM_ID жорстко прописана для усунення помилки "reading _bn"
-export const IDENTITY_PROGRAM_ID = new PublicKey('AUdYNM3A42jfaUkaSXeLJEXypgWFxKB1gP1hHLePkasv')
+export const IDENTITY_PROGRAM_ID = new PublicKey('Ht3HSrZqmja6tePjE1xipHuSPGBpv6JATktSSxacy5Mn')
 
 export const REGISTRY_PROGRAM_ID = new PublicKey(
   process.env.NEXT_PUBLIC_REGISTRY_PROGRAM_ID ?? FALLBACK_ID
