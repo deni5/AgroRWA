@@ -1,1 +1,135 @@
-{"version":"0.1.0","name":"identity","instructions":[{"name":"registerEmitter","accounts":[{"name":"emitterProfile","isMut":true,"isSigner":false},{"name":"wallet","isMut":true,"isSigner":true},{"name":"systemProgram","isMut":false,"isSigner":false}],"args":[{"name":"args","type":{"defined":"RegisterEmitterArgs"}}]},{"name":"reviewKyc","accounts":[{"name":"emitterProfile","isMut":true,"isSigner":false},{"name":"admin","isMut":false,"isSigner":true}],"args":[{"name":"approved","type":"bool"},{"name":"note","type":"string"}]},{"name":"registerOracle","accounts":[{"name":"oracleProfile","isMut":true,"isSigner":false},{"name":"wallet","isMut":true,"isSigner":true},{"name":"systemProgram","isMut":false,"isSigner":false}],"args":[{"name":"args","type":{"defined":"RegisterOracleArgs"}}]}],"accounts":[{"name":"EmitterProfile","type":{"kind":"struct","fields":[{"name":"wallet","type":"publicKey"},{"name":"legalName","type":"string"},{"name":"edrpou","type":"string"},{"name":"country","type":"string"},{"name":"region","type":"string"},{"name":"docsIpfs","type":{"vec":"string"}},{"name":"kycStatus","type":{"defined":"KycStatus"}},{"name":"kycReviewer","type":{"option":"publicKey"}},{"name":"kycReviewedAt","type":{"option":"i64"}},{"name":"kycNote","type":"string"},{"name":"ratingScore","type":"u16"},{"name":"totalIssued","type":"u32"},{"name":"totalFulfilled","type":"u32"},{"name":"totalDefaults","type":"u8"},{"name":"registeredAt","type":"i64"},{"name":"bump","type":"u8"}]}},{"name":"OracleProfile","type":{"kind":"struct","fields":[{"name":"wallet","type":"publicKey"},{"name":"name","type":"string"},{"name":"role","type":{"defined":"OracleRole"}},{"name":"credentialsIpfs","type":"string"},{"name":"stakeAmount","type":"u64"},{"name":"isActive","type":"bool"},{"name":"reputationScore","type":"u16"},{"name":"verifiedCount","type":"u32"},{"name":"disputeCount","type":"u16"},{"name":"registeredAt","type":"i64"},{"name":"bump","type":"u8"}]}}],"types":[{"name":"RegisterEmitterArgs","type":{"kind":"struct","fields":[{"name":"legalName","type":"string"},{"name":"edrpou","type":"string"},{"name":"country","type":"string"},{"name":"region","type":"string"},{"name":"docsIpfs","type":{"vec":"string"}}]}},{"name":"RegisterOracleArgs","type":{"kind":"struct","fields":[{"name":"name","type":"string"},{"name":"role","type":{"defined":"OracleRole"}},{"name":"credentialsIpfs","type":"string"},{"name":"stakeAmount","type":"u64"}]}},{"name":"KycStatus","type":{"kind":"enum","variants":[{"name":"Pending"},{"name":"Approved"},{"name":"Rejected"},{"name":"Suspended"}]}},{"name":"OracleRole","type":{"kind":"enum","variants":[{"name":"AgroExpert"},{"name":"Notary"},{"name":"LegalAdvisor"},{"name":"Auditor"}]}}],"metadata":{"address":"AUdYNM3A42jfaUkaSXeLJEXypgWFxKB1gP1hHLePkasv"}}
+{
+  "address": "AUdYNM3A42jfaUkaSXeLJEXypgWFxKB1gP1hHLePkasv",
+  "metadata": {
+    "name": "identity",
+    "version": "0.1.0",
+    "spec": "0.1.0"
+  },
+  "instructions": [
+    {
+      "name": "register_emitter",
+      "discriminator": [181, 157, 89, 175, 103, 39, 0, 243],
+      "accounts": [
+        {"name": "emitter_profile", "writable": true, "pda": {"seeds": [{"kind": "const", "value": [101,109,105,116,116,101,114]}, {"kind": "account", "path": "wallet"}]}},
+        {"name": "wallet", "writable": true, "signer": true},
+        {"name": "system_program", "address": "11111111111111111111111111111111"}
+      ],
+      "args": [
+        {"name": "args", "type": {"defined": {"name": "RegisterEmitterArgs"}}}
+      ]
+    },
+    {
+      "name": "review_kyc",
+      "discriminator": [98, 200, 164, 147, 213, 21, 23, 11],
+      "accounts": [
+        {"name": "emitter_profile", "writable": true, "pda": {"seeds": [{"kind": "const", "value": [101,109,105,116,116,101,114]}, {"kind": "account", "path": "emitter_profile.wallet", "account": "EmitterProfile"}]}},
+        {"name": "admin", "signer": true}
+      ],
+      "args": [
+        {"name": "approved", "type": "bool"},
+        {"name": "note", "type": "string"}
+      ]
+    },
+    {
+      "name": "register_oracle",
+      "discriminator": [44, 123, 202, 211, 99, 54, 22, 81],
+      "accounts": [
+        {"name": "oracle_profile", "writable": true, "pda": {"seeds": [{"kind": "const", "value": [111,114,97,99,108,101]}, {"kind": "account", "path": "wallet"}]}},
+        {"name": "wallet", "writable": true, "signer": true},
+        {"name": "system_program", "address": "11111111111111111111111111111111"}
+      ],
+      "args": [
+        {"name": "args", "type": {"defined": {"name": "RegisterOracleArgs"}}}
+      ]
+    }
+  ],
+  "accounts": [
+    {"name": "EmitterProfile", "discriminator": [143, 71, 161, 58, 88, 129, 23, 21]},
+    {"name": "OracleProfile", "discriminator": [128, 228, 91, 96, 247, 211, 91, 138]}
+  ],
+  "types": [
+    {
+      "name": "EmitterProfile",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {"name": "wallet", "type": "pubkey"},
+          {"name": "legal_name", "type": "string"},
+          {"name": "edrpou", "type": "string"},
+          {"name": "country", "type": "string"},
+          {"name": "region", "type": "string"},
+          {"name": "docs_ipfs", "type": {"vec": "string"}},
+          {"name": "kyc_status", "type": {"defined": {"name": "KycStatus"}}},
+          {"name": "kyc_reviewer", "type": {"option": "pubkey"}},
+          {"name": "kyc_reviewed_at", "type": {"option": "i64"}},
+          {"name": "kyc_note", "type": "string"},
+          {"name": "rating_score", "type": "u16"},
+          {"name": "total_issued", "type": "u32"},
+          {"name": "total_fulfilled", "type": "u32"},
+          {"name": "total_defaults", "type": "u8"},
+          {"name": "registered_at", "type": "i64"},
+          {"name": "bump", "type": "u8"}
+        ]
+      }
+    },
+    {
+      "name": "OracleProfile",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {"name": "wallet", "type": "pubkey"},
+          {"name": "name", "type": "string"},
+          {"name": "role", "type": {"defined": {"name": "OracleRole"}}},
+          {"name": "credentials_ipfs", "type": "string"},
+          {"name": "stake_amount", "type": "u64"},
+          {"name": "is_active", "type": "bool"},
+          {"name": "reputation_score", "type": "u16"},
+          {"name": "verified_count", "type": "u32"},
+          {"name": "dispute_count", "type": "u16"},
+          {"name": "registered_at", "type": "i64"},
+          {"name": "bump", "type": "u8"}
+        ]
+      }
+    },
+    {
+      "name": "RegisterEmitterArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {"name": "legal_name", "type": "string"},
+          {"name": "edrpou", "type": "string"},
+          {"name": "country", "type": "string"},
+          {"name": "region", "type": "string"},
+          {"name": "docs_ipfs", "type": {"vec": "string"}}
+        ]
+      }
+    },
+    {
+      "name": "RegisterOracleArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {"name": "name", "type": "string"},
+          {"name": "role", "type": {"defined": {"name": "OracleRole"}}},
+          {"name": "credentials_ipfs", "type": "string"},
+          {"name": "stake_amount", "type": "u64"}
+        ]
+      }
+    },
+    {
+      "name": "KycStatus",
+      "type": {"kind": "enum", "variants": [{"name": "Pending"}, {"name": "Approved"}, {"name": "Rejected"}, {"name": "Suspended"}]}
+    },
+    {
+      "name": "OracleRole",
+      "type": {"kind": "enum", "variants": [{"name": "AgroExpert"}, {"name": "Notary"}, {"name": "LegalAdvisor"}, {"name": "Auditor"}]}
+    }
+  ],
+  "errors": [
+    {"code": 6000, "name": "AlreadyApproved", "msg": "KYC already approved"},
+    {"code": 6001, "name": "KycNotApproved", "msg": "KYC not approved"},
+    {"code": 6002, "name": "OracleNotActive", "msg": "Oracle not active"},
+    {"code": 6003, "name": "FieldTooLong", "msg": "String field too long"},
+    {"code": 6004, "name": "Unauthorized", "msg": "Unauthorized"}
+  ]
+}
