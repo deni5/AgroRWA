@@ -101,20 +101,21 @@ export function useRegisterEmitter() {
       const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, IDENTITY_PROGRAM_ID, provider)
 
-      const [emitterPDA] = getEmitterPDA(wallet.publicKey)
+      // ФІКС: Очищаємо PublicKey, щоб уникнути конфлікту версій BN
+      const cleanWalletKey = new PublicKey(wallet.publicKey.toBase58())
+      const [emitterPDA] = getEmitterPDA(cleanWalletKey)
 
-      // ПЕРЕДАЧА АРГУМЕНТІВ: Передаємо як об'єкт "args", edrpou як String
       return await program.methods
         .registerEmitter({
-          legalName: args.legalName,
-          edrpou: args.edrpou, 
-          country: args.country,
-          region: args.region,
+          legalName: String(args.legalName),
+          edrpou: String(args.edrpou), 
+          country: String(args.country),
+          region: String(args.region),
           docsIpfs: args.docsIpfs
         })
         .accounts({
           emitterProfile: emitterPDA,
-          wallet: wallet.publicKey,
+          wallet: cleanWalletKey,
           systemProgram: SystemProgram.programId,
         })
         .rpc()
@@ -125,10 +126,7 @@ export function useRegisterEmitter() {
     },
     onError: (e: any) => {
       console.error("Emitter Registration Error:", e)
-      const msg = e.message?.includes('_bn') 
-        ? "Program Address Mismatch. Verify IDENTITY_PROGRAM_ID in lib/solana.ts"
-        : e.message
-      toast.error(msg)
+      toast.error(e.message || "Unknown error")
     },
   })
 }
@@ -147,14 +145,16 @@ export function useRegisterOracle() {
       credentialsIpfs: string
       stakeAmount: bigint
     }) => {
-      if (!wallet.publicKey) throw new Error('Wallet not connected')
+      if (!wallet.publicKey || !wallet.signTransaction) throw new Error('Wallet not connected')
 
       const { Program, AnchorProvider, BN } = await import('@coral-xyz/anchor')
       const idl = (await import('@/lib/idl/identity.json')).default
       const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
       const program = new Program(idl as any, IDENTITY_PROGRAM_ID, provider)
 
-      const [oraclePDA] = getOraclePDA(wallet.publicKey)
+      const cleanWalletKey = new PublicKey(wallet.publicKey.toBase58())
+      const [oraclePDA] = getOraclePDA(cleanWalletKey)
+
       const roleMap = {
         AgroExpert: { agroExpert: {} },
         Notary: { notary: {} },
@@ -164,14 +164,14 @@ export function useRegisterOracle() {
 
       return await program.methods
         .registerOracle({
-          name: args.name,
+          name: String(args.name),
           role: roleMap[args.role],
-          credentialsIpfs: args.credentialsIpfs,
+          credentialsIpfs: String(args.credentialsIpfs),
           stakeAmount: new BN(args.stakeAmount.toString())
         })
         .accounts({
           oracleProfile: oraclePDA,
-          wallet: wallet.publicKey,
+          wallet: cleanWalletKey,
           systemProgram: SystemProgram.programId,
         })
         .rpc()
@@ -180,7 +180,10 @@ export function useRegisterOracle() {
       toast.success('Oracle registered!')
       qc.invalidateQueries({ queryKey: ['oracle'] })
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: any) => {
+      console.error("Oracle Registration Error:", e)
+      toast.error(e.message || "Unknown error")
+    },
   })
 }
 
