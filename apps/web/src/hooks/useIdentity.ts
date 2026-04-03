@@ -99,7 +99,7 @@ export function useRegisterEmitter() {
       const idl = (await import('@/lib/idl/identity.json')).default
       
       const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
-      const program = new Program(idl as any, provider)
+      const program = new Program(idl as any, IDENTITY_PROGRAM_ID, provider)
 
       const [emitterPDA] = getEmitterPDA(wallet.publicKey)
 
@@ -152,7 +152,7 @@ export function useRegisterOracle() {
       const { Program, AnchorProvider, BN } = await import('@coral-xyz/anchor')
       const idl = (await import('@/lib/idl/identity.json')).default
       const provider = new AnchorProvider(connection, wallet as any, { commitment: 'confirmed' })
-      const program = new Program(idl as any, provider)
+      const program = new Program(idl as any, IDENTITY_PROGRAM_ID, provider)
 
       const [oraclePDA] = getOraclePDA(wallet.publicKey)
       const roleMap = {
