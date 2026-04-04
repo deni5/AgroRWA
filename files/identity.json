@@ -1,0 +1,485 @@
+{
+  "version": "0.1.0",
+  "name": "identity",
+  "instructions": [
+    {
+      "name": "registerEmitter",
+      "accounts": [
+        {
+          "name": "emitterProfile",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "wallet",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "RegisterEmitterArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "reviewKyc",
+      "accounts": [
+        {
+          "name": "emitterProfile",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "approved",
+          "type": "bool"
+        },
+        {
+          "name": "note",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "updateEmitterRating",
+      "accounts": [
+        {
+          "name": "emitterProfile",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "delta",
+          "type": "i16"
+        },
+        {
+          "name": "reason",
+          "type": {
+            "defined": "RatingEvent"
+          }
+        }
+      ]
+    },
+    {
+      "name": "registerOracle",
+      "accounts": [
+        {
+          "name": "oracleProfile",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "wallet",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "RegisterOracleArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "setOracleActive",
+      "accounts": [
+        {
+          "name": "oracleProfile",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "active",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "updateOracleReputation",
+      "accounts": [
+        {
+          "name": "oracleProfile",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "delta",
+          "type": "i16"
+        },
+        {
+          "name": "event",
+          "type": {
+            "defined": "ReputationEvent"
+          }
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "EmitterProfile",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "publicKey"
+          },
+          {
+            "name": "legalName",
+            "type": "string"
+          },
+          {
+            "name": "edrpou",
+            "type": "string"
+          },
+          {
+            "name": "country",
+            "type": "string"
+          },
+          {
+            "name": "region",
+            "type": "string"
+          },
+          {
+            "name": "docsIpfs",
+            "type": {
+              "vec": "string"
+            }
+          },
+          {
+            "name": "kycStatus",
+            "type": {
+              "defined": "KycStatus"
+            }
+          },
+          {
+            "name": "kycReviewer",
+            "type": {
+              "option": "publicKey"
+            }
+          },
+          {
+            "name": "kycReviewedAt",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "kycNote",
+            "type": "string"
+          },
+          {
+            "name": "ratingScore",
+            "type": "u16"
+          },
+          {
+            "name": "totalIssued",
+            "type": "u32"
+          },
+          {
+            "name": "totalFulfilled",
+            "type": "u32"
+          },
+          {
+            "name": "totalDefaults",
+            "type": "u8"
+          },
+          {
+            "name": "registeredAt",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OracleProfile",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "wallet",
+            "type": "publicKey"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "role",
+            "type": {
+              "defined": "OracleRole"
+            }
+          },
+          {
+            "name": "credentialsIpfs",
+            "type": "string"
+          },
+          {
+            "name": "stakeAmount",
+            "type": "u64"
+          },
+          {
+            "name": "isActive",
+            "type": "bool"
+          },
+          {
+            "name": "reputationScore",
+            "type": "u16"
+          },
+          {
+            "name": "verifiedCount",
+            "type": "u32"
+          },
+          {
+            "name": "disputeCount",
+            "type": "u16"
+          },
+          {
+            "name": "registeredAt",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "RegisterEmitterArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "legalName",
+            "type": "string"
+          },
+          {
+            "name": "edrpou",
+            "type": "string"
+          },
+          {
+            "name": "country",
+            "type": "string"
+          },
+          {
+            "name": "region",
+            "type": "string"
+          },
+          {
+            "name": "docsIpfs",
+            "type": {
+              "vec": "string"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegisterOracleArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "role",
+            "type": {
+              "defined": "OracleRole"
+            }
+          },
+          {
+            "name": "credentialsIpfs",
+            "type": "string"
+          },
+          {
+            "name": "stakeAmount",
+            "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "KycStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "Approved"
+          },
+          {
+            "name": "Rejected"
+          },
+          {
+            "name": "Suspended"
+          }
+        ]
+      }
+    },
+    {
+      "name": "OracleRole",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "AgroExpert"
+          },
+          {
+            "name": "Notary"
+          },
+          {
+            "name": "LegalAdvisor"
+          },
+          {
+            "name": "Auditor"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RatingEvent",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ObligationFulfilled"
+          },
+          {
+            "name": "EarlyFulfillment"
+          },
+          {
+            "name": "LateDelivery"
+          },
+          {
+            "name": "Default"
+          },
+          {
+            "name": "DisputeOpened"
+          },
+          {
+            "name": "FraudProven"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ReputationEvent",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "VerificationCompleted"
+          },
+          {
+            "name": "DeliveryConfirmed"
+          },
+          {
+            "name": "DisputeOpened"
+          },
+          {
+            "name": "FraudProven"
+          },
+          {
+            "name": "Cancellation"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "AlreadyApproved",
+      "msg": "KYC already approved"
+    },
+    {
+      "code": 6001,
+      "name": "KycNotApproved",
+      "msg": "KYC not approved"
+    },
+    {
+      "code": 6002,
+      "name": "OracleNotActive",
+      "msg": "Oracle not active"
+    },
+    {
+      "code": 6003,
+      "name": "InsufficientStake",
+      "msg": "Insufficient oracle stake"
+    },
+    {
+      "code": 6004,
+      "name": "FieldTooLong",
+      "msg": "String field too long"
+    },
+    {
+      "code": 6005,
+      "name": "TooManyDocs",
+      "msg": "Too many documents"
+    },
+    {
+      "code": 6006,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    }
+  ],
+  "metadata": {
+    "address": "AUdYNM3A42jfaUkaSXeLJEXypgWFxKB1gP1hHLePkasv"
+  }
+}

@@ -1,0 +1,427 @@
+{
+  "version": "0.1.0",
+  "name": "marketplace",
+  "instructions": [
+    {
+      "name": "createListing",
+      "accounts": [
+        {
+          "name": "listing",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "assetMint",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "escrowVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "emitterTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "emitter",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "associatedTokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "rent",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "CreateListingArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "fillOrder",
+      "accounts": [
+        {
+          "name": "listing",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "tradeRecord",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "escrowVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "investorPayment",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "emitterPayment",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "platformVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "insuranceVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "oracleFeeVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "investorTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "investor",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "cancelListing",
+      "accounts": [
+        {
+          "name": "listing",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "escrowVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "sellerTokenAccount",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "emitter",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Listing",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "assetMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "emitter",
+            "type": "publicKey"
+          },
+          {
+            "name": "escrowVault",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "amountRemaining",
+            "type": "u64"
+          },
+          {
+            "name": "pricePerUnit",
+            "type": "u64"
+          },
+          {
+            "name": "currency",
+            "type": {
+              "defined": "PaymentCurrency"
+            }
+          },
+          {
+            "name": "minLot",
+            "type": "u64"
+          },
+          {
+            "name": "listingType",
+            "type": {
+              "defined": "ListingType"
+            }
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "ListingStatus"
+            }
+          },
+          {
+            "name": "createdAt",
+            "type": "i64"
+          },
+          {
+            "name": "expiresAt",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TradeRecord",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "listing",
+            "type": "publicKey"
+          },
+          {
+            "name": "assetMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "seller",
+            "type": "publicKey"
+          },
+          {
+            "name": "buyer",
+            "type": "publicKey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "pricePerUnit",
+            "type": "u64"
+          },
+          {
+            "name": "totalPayment",
+            "type": "u64"
+          },
+          {
+            "name": "platformFee",
+            "type": "u64"
+          },
+          {
+            "name": "insuranceFee",
+            "type": "u64"
+          },
+          {
+            "name": "oracleFee",
+            "type": "u64"
+          },
+          {
+            "name": "tradedAt",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "CreateListingArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "pricePerUnit",
+            "type": "u64"
+          },
+          {
+            "name": "currency",
+            "type": {
+              "defined": "PaymentCurrency"
+            }
+          },
+          {
+            "name": "minLot",
+            "type": "u64"
+          },
+          {
+            "name": "expiresAt",
+            "type": {
+              "option": "i64"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "ListingStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Active"
+          },
+          {
+            "name": "Filled"
+          },
+          {
+            "name": "Cancelled"
+          },
+          {
+            "name": "Expired"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ListingType",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Primary"
+          },
+          {
+            "name": "Secondary"
+          }
+        ]
+      }
+    },
+    {
+      "name": "PaymentCurrency",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "USDC"
+          },
+          {
+            "name": "USDT"
+          },
+          {
+            "name": "SOL"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ZeroAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6001,
+      "name": "ZeroPrice",
+      "msg": "Price must be greater than zero"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidLot",
+      "msg": "Invalid minimum lot"
+    },
+    {
+      "code": 6003,
+      "name": "ListingNotActive",
+      "msg": "Listing is not active"
+    },
+    {
+      "code": 6004,
+      "name": "BelowMinLot",
+      "msg": "Amount below minimum lot"
+    },
+    {
+      "code": 6005,
+      "name": "InsufficientTokens",
+      "msg": "Insufficient tokens"
+    },
+    {
+      "code": 6006,
+      "name": "ListingExpired",
+      "msg": "Listing has expired"
+    },
+    {
+      "code": 6007,
+      "name": "MathOverflow",
+      "msg": "Math overflow"
+    },
+    {
+      "code": 6008,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    }
+  ],
+  "metadata": {
+    "address": "J1BxLiUjYbfiS9yFHSvud6dPb9A13MTJeYAg4K1ZMEGC"
+  }
+}

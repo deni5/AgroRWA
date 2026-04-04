@@ -1,0 +1,271 @@
+{
+  "version": "0.1.0",
+  "name": "insurance",
+  "instructions": [
+    {
+      "name": "initializeFund",
+      "accounts": [
+        {
+          "name": "fund",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "openClaim",
+      "accounts": [
+        {
+          "name": "fund",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "claim",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "claimant",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "assetMint",
+          "type": "publicKey"
+        },
+        {
+          "name": "claimAmount",
+          "type": "u64"
+        },
+        {
+          "name": "reason",
+          "type": {
+            "defined": "ClaimReason"
+          }
+        },
+        {
+          "name": "evidenceIpfs",
+          "type": "string"
+        }
+      ]
+    },
+    {
+      "name": "approveClaim",
+      "accounts": [
+        {
+          "name": "fund",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "claim",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "fundVault",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "claimantPayment",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "admin",
+          "isMut": false,
+          "isSigner": true
+        },
+        {
+          "name": "tokenProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "approvedAmount",
+          "type": "u64"
+        },
+        {
+          "name": "note",
+          "type": "string"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "InsuranceFund",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "totalBalance",
+            "type": "u64"
+          },
+          {
+            "name": "totalPaidOut",
+            "type": "u64"
+          },
+          {
+            "name": "activeClaims",
+            "type": "u16"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "InsuranceClaim",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "claimant",
+            "type": "publicKey"
+          },
+          {
+            "name": "assetMint",
+            "type": "publicKey"
+          },
+          {
+            "name": "claimAmount",
+            "type": "u64"
+          },
+          {
+            "name": "approvedAmount",
+            "type": "u64"
+          },
+          {
+            "name": "reason",
+            "type": {
+              "defined": "ClaimReason"
+            }
+          },
+          {
+            "name": "evidenceIpfs",
+            "type": "string"
+          },
+          {
+            "name": "status",
+            "type": {
+              "defined": "ClaimStatus"
+            }
+          },
+          {
+            "name": "resolutionNote",
+            "type": "string"
+          },
+          {
+            "name": "openedAt",
+            "type": "i64"
+          },
+          {
+            "name": "resolvedAt",
+            "type": {
+              "option": "i64"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "ClaimReason",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "ForceMajeure"
+          },
+          {
+            "name": "EmitterFraud"
+          },
+          {
+            "name": "QualityMismatch"
+          },
+          {
+            "name": "NonDelivery"
+          },
+          {
+            "name": "OracleMisconduct"
+          }
+        ]
+      }
+    },
+    {
+      "name": "ClaimStatus",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Pending"
+          },
+          {
+            "name": "UnderReview"
+          },
+          {
+            "name": "Approved"
+          },
+          {
+            "name": "Rejected"
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "ZeroAmount",
+      "msg": "Zero amount"
+    },
+    {
+      "code": 6001,
+      "name": "ClaimNotPending",
+      "msg": "Claim not pending"
+    },
+    {
+      "code": 6002,
+      "name": "InsufficientFunds",
+      "msg": "Insufficient funds"
+    },
+    {
+      "code": 6003,
+      "name": "Unauthorized",
+      "msg": "Unauthorized"
+    }
+  ],
+  "metadata": {
+    "address": "HM9wSnMqVC3fkDH4cGeL7HtZ6ZrXCG73Sm7Afxv9dacH"
+  }
+}
