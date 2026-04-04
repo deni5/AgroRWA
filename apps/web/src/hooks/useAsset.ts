@@ -136,7 +136,7 @@ export function useCreateAsset() {
           mint:                   mintKeypair.publicKey,
           emitter:                wallet.publicKey,
           tokenProgram:           new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
-          associatedTokenProgram: new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bS8'),
+          associatedTokenProgram: new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'),
           systemProgram:          new PublicKey('11111111111111111111111111111111'),
           rent:                   new PublicKey('SysvarRent111111111111111111111111111111111'),
         })
