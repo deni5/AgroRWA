@@ -8,3 +8,5 @@ out/
 .env*.local
 *.json.secret
 package-lock.json
+*.crdownload
+*.download
