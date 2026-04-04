@@ -26,21 +26,21 @@
     "copy:idl": "mkdir -p apps/web/src/lib/idl && cp target/idl/*.json apps/web/src/lib/idl/"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.39.0",
-    "@solana/web3.js": "^1.91.8",
+    "@coral-xyz/anchor": "^0.29.0",
+    "@solana/wallet-adapter-base": "^0.9.23",
     "@solana/wallet-adapter-react": "^0.15.35",
     "@solana/wallet-adapter-react-ui": "^0.9.35",
-    "@solana/wallet-adapter-base": "^0.9.23",
-    "@coral-xyz/anchor": "^0.30.1"
+    "@solana/web3.js": "^1.95.3",
+    "@tanstack/react-query": "^5.39.0"
   },
   "devDependencies": {
-    "typescript": "^5.4.5",
-    "@types/node": "^20.13.0",
+    "@solana/spl-token": "^0.4.8",
     "@types/chai": "^4.3.11",
     "@types/mocha": "^10.0.6",
-    "ts-mocha": "^10.0.0",
-    "@solana/spl-token": "^0.4.8",
+    "@types/node": "^20.13.0",
     "chai": "^4.3.10",
-    "mocha": "^10.4.0"
+    "mocha": "^10.4.0",
+    "ts-mocha": "^10.0.0",
+    "typescript": "^5.4.5"
   }
 }
