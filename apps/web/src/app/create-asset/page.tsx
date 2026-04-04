@@ -1,13 +1,22 @@
 'use client'
 
-import { useState, useMemo } from 'react' // Виправлено: додано useMemo
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useState, useMemo } from 'react'
+import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
+import {
+  PublicKey, Transaction, TransactionInstruction,
+  SystemProgram, Keypair, SYSVAR_RENT_PUBKEY,
+} from '@solana/web3.js'
 import { useEmitterProfile } from '@/hooks/useIdentity'
 import { usePythPrice, calcForwardPrice } from '@/hooks/usePyth'
 import { TxStatus } from '@/components/TxStatus'
+import { REGISTRY_PROGRAM_ID } from '@/lib/solana'
 import type { TokenType, AssetCategory, TxState } from '@/types'
-import toast from 'react-hot-toast'
+import { createHash } from 'crypto'
+import BN from 'bn.js'
+
+const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
+const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bS8')
 
 const TOKEN_TYPES: { value: TokenType; label: string; desc: string }[] = [
   { value: 'Forward', label: '🌾 Forward Token', desc: 'Future harvest — price anchored to Pyth spot' },
@@ -18,8 +27,31 @@ const TOKEN_TYPES: { value: TokenType; label: string; desc: string }[] = [
 
 const CATEGORIES: AssetCategory[] = ['Grain', 'Oilseeds', 'Livestock', 'Land', 'Equipment', 'Storage', 'Other']
 
+const TOKEN_TYPE_IDX: Record<TokenType, number> = { Forward: 0, Asset: 1, Credit: 2, Revenue: 3 }
+const CATEGORY_IDX: Record<AssetCategory, number> = { Grain: 0, Oilseeds: 1, Livestock: 2, Land: 3, Equipment: 4, Storage: 5, Other: 6 }
+
+function disc(name: string): Buffer {
+  return Buffer.from(createHash('sha256').update(`global:${name}`).digest()).slice(0, 8)
+}
+
+function encodeString(s: string): Buffer {
+  const b = Buffer.from(s, 'utf-8')
+  const len = Buffer.alloc(4); len.writeUInt32LE(b.length, 0)
+  return Buffer.concat([len, b])
+}
+
+function encodeStringVec(arr: string[]): Buffer {
+  const len = Buffer.alloc(4); len.writeUInt32LE(arr.length, 0)
+  return Buffer.concat([len, ...arr.map(encodeString)])
+}
+
+function encodeU8(n: number): Buffer { const b = Buffer.alloc(1); b.writeUInt8(n, 0); return b }
+function encodeU64(n: BN): Buffer { return n.toArrayLike(Buffer, 'le', 8) }
+function encodeI64(n: number): Buffer { return new BN(n).toArrayLike(Buffer, 'le', 8) }
+
 export default function CreateAssetPage() {
-  const { publicKey } = useWallet()
+  const { publicKey, signTransaction } = useWallet()
+  const { connection } = useConnection()
   const { data: emitter } = useEmitterProfile(publicKey?.toBase58())
   const wheatPrice = usePythPrice('WHEAT/USD')
 
@@ -43,15 +75,81 @@ export default function CreateAssetPage() {
 
   const set = (k: string, v: string) => setForm((p) => ({ ...p, [k]: v }))
 
-  // Safe calculation for Pyth price
   const suggestedPrice = useMemo(() => {
     if (form.tokenType === 'Forward' && wheatPrice.data && emitter) {
-      // Використовуємо 'as any' для усунення помилки Property 'price' does not exist
       const currentPrice = (wheatPrice.data as any).price || 0
       return calcForwardPrice(currentPrice, 90, emitter.ratingScore)
     }
     return null
   }, [form.tokenType, wheatPrice.data, emitter])
+
+  const handleSubmit = async () => {
+    if (!publicKey || !signTransaction) return
+    setTx({ status: 'pending' })
+
+    try {
+      // Генеруємо новий mint keypair
+      const mintKeypair = Keypair.generate()
+
+      // PDA для asset_record
+      const [assetPDA] = PublicKey.findProgramAddressSync(
+        [Buffer.from('asset'), mintKeypair.publicKey.toBuffer()],
+        REGISTRY_PROGRAM_ID
+      )
+
+      // Аргументи
+      const docsIpfs = [form.doc1, form.doc2, form.doc3].filter(Boolean)
+      const deliveryTs = Math.floor(new Date(form.deliveryDate).getTime() / 1000)
+      const priceU64 = new BN(Math.round(parseFloat(form.pricePerUnit) * 1_000_000))
+      const supplyU64 = new BN(parseInt(form.totalSupply))
+
+      const data = Buffer.concat([
+        disc('create_asset'),
+        encodeU8(TOKEN_TYPE_IDX[form.tokenType]),
+        encodeString(form.title),
+        encodeString(form.description),
+        encodeU8(CATEGORY_IDX[form.category]),
+        encodeString(form.locationGps || ''),
+        encodeString(form.characteristics || '{}'),
+        encodeU64(supplyU64),
+        encodeString(form.unit),
+        encodeU64(priceU64),
+        encodeU8(0), // USDC currency
+        encodeI64(deliveryTs),
+        encodeStringVec(docsIpfs),
+        encodeU8(parseInt(form.requiredVerifications)),
+      ])
+
+      const ix = new TransactionInstruction({
+        programId: REGISTRY_PROGRAM_ID,
+        keys: [
+          { pubkey: assetPDA,                     isSigner: false, isWritable: true },
+          { pubkey: mintKeypair.publicKey,         isSigner: true,  isWritable: true },
+          { pubkey: publicKey,                     isSigner: true,  isWritable: true },
+          { pubkey: TOKEN_PROGRAM_ID,              isSigner: false, isWritable: false },
+          { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID,   isSigner: false, isWritable: false },
+          { pubkey: SystemProgram.programId,       isSigner: false, isWritable: false },
+          { pubkey: SYSVAR_RENT_PUBKEY,            isSigner: false, isWritable: false },
+        ],
+        data,
+      })
+
+      const txn = new Transaction().add(ix)
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
+      txn.recentBlockhash = blockhash
+      txn.feePayer = publicKey
+      txn.partialSign(mintKeypair)
+
+      const signed = await signTransaction(txn)
+      const sig = await connection.sendRawTransaction(signed.serialize())
+      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight })
+
+      setTx({ status: 'success', sig })
+    } catch (e: any) {
+      console.error('CreateAsset error:', e)
+      setTx({ status: 'error', error: e?.message ?? 'Transaction failed' })
+    }
+  }
 
   if (!publicKey) return (
     <div className="max-w-lg mx-auto card text-center py-16 space-y-4">
@@ -76,7 +174,6 @@ export default function CreateAssetPage() {
         <p className="text-gray-400 mt-1">Tokenize your agricultural asset in 3 steps.</p>
       </div>
 
-      {/* Steps indicator */}
       <div className="flex gap-2">
         {['Asset Details', 'Pricing & Docs', 'Review'].map((s, i) => (
           <div key={s} className={`flex-1 text-center text-sm py-2 rounded-lg border transition-colors ${
@@ -87,7 +184,6 @@ export default function CreateAssetPage() {
         ))}
       </div>
 
-      {/* Step 1 */}
       {step === 1 && (
         <div className="card space-y-5">
           <h2 className="text-lg font-semibold text-gray-100">Token Type</h2>
@@ -106,18 +202,17 @@ export default function CreateAssetPage() {
               </button>
             ))}
           </div>
-
           <div>
             <label className="label">Asset Title *</label>
             <input className="input" placeholder="Wheat Harvest 2025 · Kharkiv Region"
-              value={form.title} onChange={(e) => set('title', e.target.value)} required maxLength={64} />
+              value={form.title} onChange={(e) => set('title', e.target.value)} maxLength={64} />
           </div>
           <div>
             <label className="label">Description *</label>
             <textarea className="input resize-none" rows={3}
               placeholder="Describe the asset, quality, conditions..."
               value={form.description} onChange={(e) => set('description', e.target.value)}
-              required maxLength={512} />
+              maxLength={512} />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -144,7 +239,6 @@ export default function CreateAssetPage() {
               placeholder='{"class":"2","moisture":"14%","protein":"12%"}'
               value={form.characteristics} onChange={(e) => set('characteristics', e.target.value)} />
           </div>
-
           <button type="button" className="btn-primary w-full" onClick={() => setStep(2)}
             disabled={!form.title || !form.description}>
             Next: Pricing & Documents →
@@ -152,30 +246,27 @@ export default function CreateAssetPage() {
         </div>
       )}
 
-      {/* Step 2 */}
       {step === 2 && (
         <div className="card space-y-5">
           <h2 className="text-lg font-semibold text-gray-100">Pricing & Documents</h2>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Total Supply *</label>
               <input className="input" type="number" min="1" placeholder="100"
-                value={form.totalSupply} onChange={(e) => set('totalSupply', e.target.value)} required />
+                value={form.totalSupply} onChange={(e) => set('totalSupply', e.target.value)} />
               <p className="text-xs text-gray-500 mt-1">in {form.unit}s</p>
             </div>
             <div>
               <label className="label">Delivery Date *</label>
               <input className="input" type="date"
-                value={form.deliveryDate} onChange={(e) => set('deliveryDate', e.target.value)} required />
+                value={form.deliveryDate} onChange={(e) => set('deliveryDate', e.target.value)} />
             </div>
           </div>
-
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="label">Price per {form.unit} (USDC) *</label>
               <input className="input" type="number" min="0" step="0.01" placeholder="215.50"
-                value={form.pricePerUnit} onChange={(e) => set('pricePerUnit', e.target.value)} required />
+                value={form.pricePerUnit} onChange={(e) => set('pricePerUnit', e.target.value)} />
               {suggestedPrice && (
                 <button type="button" className="text-xs text-green-400 mt-1 hover:underline"
                   onClick={() => set('pricePerUnit', suggestedPrice.toFixed(2))}>
@@ -193,7 +284,6 @@ export default function CreateAssetPage() {
               </select>
             </div>
           </div>
-
           <div className="border-t border-gray-800 pt-4 space-y-3">
             <p className="text-sm font-medium text-gray-300">Documents (IPFS hashes)</p>
             {[
@@ -204,12 +294,10 @@ export default function CreateAssetPage() {
               <div key={key}>
                 <label className="label">{label}</label>
                 <input className="input font-mono text-sm" placeholder="QmXxx..."
-                  value={(form as any)[key]} onChange={(e) => set(key, e.target.value)}
-                  required={key === 'doc1'} />
+                  value={(form as any)[key]} onChange={(e) => set(key, e.target.value)} />
               </div>
             ))}
           </div>
-
           <div className="flex gap-3">
             <button type="button" className="btn-secondary flex-1" onClick={() => setStep(1)}>← Back</button>
             <button type="button" className="btn-primary flex-1" onClick={() => setStep(3)}
@@ -220,7 +308,6 @@ export default function CreateAssetPage() {
         </div>
       )}
 
-      {/* Step 3 */}
       {step === 3 && (
         <div className="card space-y-4">
           <h2 className="text-lg font-semibold text-gray-100">Review & Submit</h2>
@@ -248,7 +335,7 @@ export default function CreateAssetPage() {
             <button type="button" className="btn-secondary flex-1" onClick={() => setStep(2)}>← Back</button>
             <button type="button" className="btn-primary flex-1 py-3"
               disabled={tx.status === 'pending'}
-              onClick={() => toast.error('Connect IDL after anchor build to enable on-chain submit')}>
+              onClick={handleSubmit}>
               {tx.status === 'pending' ? 'Creating...' : 'Create Asset Token'}
             </button>
           </div>
@@ -257,3 +344,4 @@ export default function CreateAssetPage() {
     </div>
   )
 }
+
