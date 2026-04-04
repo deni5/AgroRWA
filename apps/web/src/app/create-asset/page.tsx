@@ -1,22 +1,13 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { useWallet, useConnection } from '@solana/wallet-adapter-react'
+import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
-import {
-  PublicKey, Transaction, TransactionInstruction,
-  SystemProgram, Keypair, SYSVAR_RENT_PUBKEY,
-} from '@solana/web3.js'
 import { useEmitterProfile } from '@/hooks/useIdentity'
+import { useCreateAsset } from '@/hooks/useAsset'
 import { usePythPrice, calcForwardPrice } from '@/hooks/usePyth'
 import { TxStatus } from '@/components/TxStatus'
-import { REGISTRY_PROGRAM_ID } from '@/lib/solana'
 import type { TokenType, AssetCategory, TxState } from '@/types'
-import { createHash } from 'crypto'
-import BN from 'bn.js'
-
-const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
-const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bS8')
 
 const TOKEN_TYPES: { value: TokenType; label: string; desc: string }[] = [
   { value: 'Forward', label: '🌾 Forward Token', desc: 'Future harvest — price anchored to Pyth spot' },
@@ -27,33 +18,11 @@ const TOKEN_TYPES: { value: TokenType; label: string; desc: string }[] = [
 
 const CATEGORIES: AssetCategory[] = ['Grain', 'Oilseeds', 'Livestock', 'Land', 'Equipment', 'Storage', 'Other']
 
-const TOKEN_TYPE_IDX: Record<TokenType, number> = { Forward: 0, Asset: 1, Credit: 2, Revenue: 3 }
-const CATEGORY_IDX: Record<AssetCategory, number> = { Grain: 0, Oilseeds: 1, Livestock: 2, Land: 3, Equipment: 4, Storage: 5, Other: 6 }
-
-function disc(name: string): Buffer {
-  return Buffer.from(createHash('sha256').update(`global:${name}`).digest()).slice(0, 8)
-}
-
-function encodeString(s: string): Buffer {
-  const b = Buffer.from(s, 'utf-8')
-  const len = Buffer.alloc(4); len.writeUInt32LE(b.length, 0)
-  return Buffer.concat([len, b])
-}
-
-function encodeStringVec(arr: string[]): Buffer {
-  const len = Buffer.alloc(4); len.writeUInt32LE(arr.length, 0)
-  return Buffer.concat([len, ...arr.map(encodeString)])
-}
-
-function encodeU8(n: number): Buffer { const b = Buffer.alloc(1); b.writeUInt8(n, 0); return b }
-function encodeU64(n: BN): Buffer { return n.toArrayLike(Buffer, 'le', 8) }
-function encodeI64(n: number): Buffer { return new BN(n).toArrayLike(Buffer, 'le', 8) }
-
 export default function CreateAssetPage() {
-  const { publicKey, signTransaction } = useWallet()
-  const { connection } = useConnection()
+  const { publicKey } = useWallet()
   const { data: emitter } = useEmitterProfile(publicKey?.toBase58())
   const wheatPrice = usePythPrice('WHEAT/USD')
+  const createAsset = useCreateAsset()
 
   const [step, setStep] = useState(1)
   const [tx, setTx] = useState<TxState>({ status: 'idle' })
@@ -84,69 +53,25 @@ export default function CreateAssetPage() {
   }, [form.tokenType, wheatPrice.data, emitter])
 
   const handleSubmit = async () => {
-    if (!publicKey || !signTransaction) return
     setTx({ status: 'pending' })
-
     try {
-      // Генеруємо новий mint keypair
-      const mintKeypair = Keypair.generate()
-
-      // PDA для asset_record
-      const [assetPDA] = PublicKey.findProgramAddressSync(
-        [Buffer.from('asset'), mintKeypair.publicKey.toBuffer()],
-        REGISTRY_PROGRAM_ID
-      )
-
-      // Аргументи
-      const docsIpfs = [form.doc1, form.doc2, form.doc3].filter(Boolean)
-      const deliveryTs = Math.floor(new Date(form.deliveryDate).getTime() / 1000)
-      const priceU64 = new BN(Math.round(parseFloat(form.pricePerUnit) * 1_000_000))
-      const supplyU64 = new BN(parseInt(form.totalSupply))
-
-      const data = Buffer.concat([
-        disc('create_asset'),
-        encodeU8(TOKEN_TYPE_IDX[form.tokenType]),
-        encodeString(form.title),
-        encodeString(form.description),
-        encodeU8(CATEGORY_IDX[form.category]),
-        encodeString(form.locationGps || ''),
-        encodeString(form.characteristics || '{}'),
-        encodeU64(supplyU64),
-        encodeString(form.unit),
-        encodeU64(priceU64),
-        encodeU8(0), // USDC currency
-        encodeI64(deliveryTs),
-        encodeStringVec(docsIpfs),
-        encodeU8(parseInt(form.requiredVerifications)),
-      ])
-
-      const ix = new TransactionInstruction({
-        programId: REGISTRY_PROGRAM_ID,
-        keys: [
-          { pubkey: assetPDA,                     isSigner: false, isWritable: true },
-          { pubkey: mintKeypair.publicKey,         isSigner: true,  isWritable: true },
-          { pubkey: publicKey,                     isSigner: true,  isWritable: true },
-          { pubkey: TOKEN_PROGRAM_ID,              isSigner: false, isWritable: false },
-          { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID,   isSigner: false, isWritable: false },
-          { pubkey: SystemProgram.programId,       isSigner: false, isWritable: false },
-          { pubkey: SYSVAR_RENT_PUBKEY,            isSigner: false, isWritable: false },
-        ],
-        data,
+      const result = await createAsset.mutateAsync({
+        tokenType: form.tokenType,
+        title: form.title,
+        description: form.description,
+        category: form.category,
+        locationGps: form.locationGps || '',
+        characteristics: form.characteristics || '{}',
+        totalSupply: BigInt(parseInt(form.totalSupply)),
+        unit: form.unit,
+        pricePerUnit: BigInt(Math.round(parseFloat(form.pricePerUnit) * 1_000_000)),
+        currency: 'USDC',
+        deliveryDate: Math.floor(new Date(form.deliveryDate).getTime() / 1000),
+        docsIpfs: [form.doc1, form.doc2, form.doc3].filter(Boolean),
+        requiredVerifications: parseInt(form.requiredVerifications),
       })
-
-      const txn = new Transaction().add(ix)
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash()
-      txn.recentBlockhash = blockhash
-      txn.feePayer = publicKey
-      txn.partialSign(mintKeypair)
-
-      const signed = await signTransaction(txn)
-      const sig = await connection.sendRawTransaction(signed.serialize())
-      await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight })
-
-      setTx({ status: 'success', sig })
+      setTx({ status: 'success', sig: result.sig })
     } catch (e: any) {
-      console.error('CreateAsset error:', e)
       setTx({ status: 'error', error: e?.message ?? 'Transaction failed' })
     }
   }
@@ -334,9 +259,9 @@ export default function CreateAssetPage() {
           <div className="flex gap-3">
             <button type="button" className="btn-secondary flex-1" onClick={() => setStep(2)}>← Back</button>
             <button type="button" className="btn-primary flex-1 py-3"
-              disabled={tx.status === 'pending'}
+              disabled={tx.status === 'pending' || createAsset.isPending}
               onClick={handleSubmit}>
-              {tx.status === 'pending' ? 'Creating...' : 'Create Asset Token'}
+              {tx.status === 'pending' || createAsset.isPending ? 'Creating...' : 'Create Asset Token'}
             </button>
           </div>
         </div>
@@ -344,4 +269,3 @@ export default function CreateAssetPage() {
     </div>
   )
 }
-
