@@ -12,10 +12,8 @@ const CATEGORIES: AssetCategory[] = ['Grain', 'Oilseeds', 'Livestock', 'Land', '
 
 export default function MarketplacePage() {
   const { data: listings, isLoading } = useAllListings()
-  
-  // Отримуємо ціну через Pyth
   const wheatPrice = usePythPrice('WHEAT/USD')
-  
+
   const [typeFilter, setTypeFilter] = useState<TokenType | 'All'>('All')
   const [categoryFilter, setCategoryFilter] = useState<AssetCategory | 'All'>('All')
   const [search, setSearch] = useState('')
@@ -28,45 +26,66 @@ export default function MarketplacePage() {
   }) ?? []
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 className="text-3xl font-bold text-gray-100">Marketplace</h1>
-          <p className="text-gray-400 mt-1">Verified agricultural assets available for investment</p>
+          <h1 style={{ fontSize: '32px', fontWeight: '700', letterSpacing: '-0.03em', marginBottom: '4px' }}>
+            Marketplace
+          </h1>
+          <p style={{ color: '#5a8a6a', fontSize: '14px' }}>
+            Verified agricultural assets available for investment
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-          {/* ВИПРАВЛЕНО: Додано перевірку на наявність даних та приведення типу для уникнення помилки білду */}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           {wheatPrice.data && (
-            <div className="card py-2 px-4 text-sm flex items-center bg-gray-800/50 border-gray-700">
-              <span className="text-gray-400">WHEAT/USD</span>
-              <span className="text-green-400 font-semibold ml-2">
+            <div style={{
+              background: '#fff',
+              border: '1px solid rgba(26,67,40,0.08)',
+              borderRadius: '12px',
+              padding: '8px 16px',
+              fontSize: '13px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              boxShadow: '0 2px 8px -2px rgba(26,67,40,0.08)',
+            }}>
+              <span style={{ color: '#7aaa88' }}>WHEAT/USD</span>
+              <span style={{ color: '#2d6a4f', fontWeight: '700', fontFamily: 'monospace' }}>
                 ${(wheatPrice.data as any).price?.toFixed(2) || '0.00'}
               </span>
             </div>
           )}
-          <Link href="/create-asset" className="btn-primary">+ List Asset</Link>
+          <Link href="/create-asset" className="btn-primary" style={{ padding: '10px 20px', fontSize: '14px' }}>
+            + List Asset
+          </Link>
         </div>
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-3">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
         <input
-          className="input max-w-xs"
+          className="input"
+          style={{ maxWidth: '260px' }}
           placeholder="Search assets..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
-        <select 
-          className="input w-40" 
-          value={typeFilter} 
+        <select
+          className="input"
+          style={{ width: '160px' }}
+          value={typeFilter}
           onChange={(e) => setTypeFilter(e.target.value as any)}
         >
           <option value="All">All types</option>
           {TOKEN_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
         </select>
-        <select 
-          className="input w-44" 
-          value={categoryFilter} 
+        <select
+          className="input"
+          style={{ width: '180px' }}
+          value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value as any)}
         >
           <option value="All">All categories</option>
@@ -74,33 +93,55 @@ export default function MarketplacePage() {
         </select>
       </div>
 
+      {/* Loading */}
       {isLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="card h-56 animate-pulse bg-gray-800/50 border-gray-700" />
+            <div key={i} style={{
+              height: '220px',
+              borderRadius: '20px',
+              background: 'linear-gradient(90deg, #f0f7f2 25%, #e8f5eb 50%, #f0f7f2 75%)',
+              backgroundSize: '200% 100%',
+              animation: 'shimmer 1.5s infinite',
+            }} />
           ))}
         </div>
       )}
 
+      {/* Empty */}
       {!isLoading && filtered.length === 0 && (
-        <div className="card text-center py-16 text-gray-500">
-          No assets found.{' '}
-          <Link href="/create-asset" className="text-green-400 underline">List the first one</Link>
+        <div className="card" style={{ textAlign: 'center', padding: '64px 32px' }}>
+          <div style={{ fontSize: '40px', marginBottom: '16px' }}>🌾</div>
+          <p style={{ color: '#7aaa88', fontSize: '15px', marginBottom: '16px' }}>
+            No assets found.
+          </p>
+          <Link href="/create-asset" className="btn-primary" style={{ display: 'inline-block', padding: '12px 24px' }}>
+            List the first asset
+          </Link>
         </div>
       )}
 
+      {/* Results */}
       {!isLoading && filtered.length > 0 && (
         <>
-          <p className="text-sm text-gray-500">
+          <p style={{ fontSize: '13px', color: '#9cbb9e' }}>
             {filtered.length} listing{filtered.length !== 1 ? 's' : ''} found
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
             {filtered.map((listing) => (
               <AssetCard key={listing.address.toString()} listing={listing} />
             ))}
           </div>
         </>
       )}
+
+      <style>{`
+        @keyframes shimmer {
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+      `}</style>
+
     </div>
   )
 }
