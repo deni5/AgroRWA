@@ -28,17 +28,12 @@ export default function CreateAssetPage() {
   const [tx, setTx] = useState<TxState>({ status: 'idle' })
   const [form, setForm] = useState({
     tokenType: 'Forward' as TokenType,
-    title: '',
-    description: '',
+    title: '', description: '',
     category: 'Grain' as AssetCategory,
-    locationGps: '',
-    characteristics: '',
-    totalSupply: '',
-    unit: 'ton',
-    pricePerUnit: '',
-    currency: 'USDC',
-    deliveryDate: '',
-    doc1: '', doc2: '', doc3: '',
+    locationGps: '', characteristics: '',
+    totalSupply: '', unit: 'ton',
+    pricePerUnit: '', currency: 'USDC',
+    deliveryDate: '', doc1: '', doc2: '', doc3: '',
     requiredVerifications: '2',
   })
 
@@ -77,69 +72,80 @@ export default function CreateAssetPage() {
   }
 
   if (!publicKey) return (
-    <div className="max-w-lg mx-auto card text-center py-16 space-y-4">
-      <p className="text-gray-400">Connect wallet to create an asset listing.</p>
+    <div className="card" style={{ maxWidth: '480px', margin: '0 auto', textAlign: 'center', padding: '64px 32px' }}>
+      <p style={{ color: '#5a8a6a', marginBottom: '24px' }}>Connect wallet to create an asset listing.</p>
       <WalletMultiButton />
     </div>
   )
 
   if (!emitter || emitter.kycStatus !== 'Approved') return (
-    <div className="max-w-lg mx-auto card text-center py-12 space-y-4">
-      <div className="text-4xl">🔐</div>
-      <h2 className="text-xl font-semibold text-gray-100">KYC Required</h2>
-      <p className="text-gray-400">You need approved KYC status to create asset listings.</p>
-      <a href="/kyc" className="btn-primary inline-block">Register as Emitter</a>
+    <div className="card" style={{ maxWidth: '480px', margin: '0 auto', textAlign: 'center', padding: '48px 32px' }}>
+      <div style={{ fontSize: '40px', marginBottom: '16px' }}>🔐</div>
+      <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px' }}>KYC Required</h2>
+      <p style={{ color: '#5a8a6a', marginBottom: '24px', fontSize: '14px' }}>You need approved KYC status to create asset listings.</p>
+      <a href="/kyc" className="btn-primary" style={{ display: 'inline-block' }}>Register as Emitter</a>
     </div>
   )
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <div style={{ maxWidth: '680px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-100">Create Asset Token</h1>
-        <p className="text-gray-400 mt-1">Tokenize your agricultural asset in 3 steps.</p>
+        <h1 style={{ fontSize: '32px', fontWeight: '700', letterSpacing: '-0.03em', marginBottom: '6px' }}>
+          Create Asset Token
+        </h1>
+        <p style={{ color: '#5a8a6a', fontSize: '15px' }}>Tokenize your agricultural asset in 3 steps.</p>
       </div>
 
-      <div className="flex gap-2">
+      {/* Step indicator */}
+      <div style={{ display: 'flex', gap: '8px' }}>
         {['Asset Details', 'Pricing & Docs', 'Review'].map((s, i) => (
-          <div key={s} className={`flex-1 text-center text-sm py-2 rounded-lg border transition-colors ${
-            step === i + 1 ? 'border-green-600 bg-green-900/30 text-green-400' :
-            step > i + 1  ? 'border-green-800 bg-green-900/10 text-green-600' :
-                            'border-gray-700 text-gray-500'
-          }`}>{i + 1}. {s}</div>
+          <div key={s} style={{
+            flex: 1, textAlign: 'center', fontSize: '12px', fontWeight: '600',
+            padding: '8px 4px',
+            borderBottom: `2px solid ${step === i+1 ? '#2d6a4f' : step > i+1 ? '#52b788' : 'rgba(26,67,40,0.12)'}`,
+            color: step === i+1 ? '#2d6a4f' : step > i+1 ? '#52b788' : '#9cbb9e',
+            transition: 'all 0.2s',
+            letterSpacing: '0.02em',
+          }}>
+            {i + 1}. {s}
+          </div>
         ))}
       </div>
 
+      {/* Step 1 */}
       {step === 1 && (
-        <div className="card space-y-5">
-          <h2 className="text-lg font-semibold text-gray-100">Token Type</h2>
-          <div className="grid grid-cols-2 gap-3">
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '-0.02em' }}>Token Type</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             {TOKEN_TYPES.map(({ value, label, desc }) => (
-              <button key={value} type="button"
-                onClick={() => set('tokenType', value)}
-                className={`text-left p-3 rounded-lg border transition-colors ${
-                  form.tokenType === value
-                    ? 'border-green-600 bg-green-900/30'
-                    : 'border-gray-700 hover:border-gray-600'
-                }`}
-              >
-                <p className="font-medium text-sm text-gray-100">{label}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{desc}</p>
+              <button key={value} type="button" onClick={() => set('tokenType', value)} style={{
+                textAlign: 'left', padding: '14px', borderRadius: '16px', cursor: 'pointer',
+                border: form.tokenType === value ? '1.5px solid #2d6a4f' : '1.5px solid rgba(26,67,40,0.1)',
+                background: form.tokenType === value ? '#e8f7ed' : '#f8fbf9',
+                transition: 'all 0.2s',
+              }}>
+                <p style={{ fontWeight: '600', fontSize: '14px', color: '#1a4328', marginBottom: '4px' }}>{label}</p>
+                <p style={{ fontSize: '12px', color: '#7aaa88', lineHeight: '1.4' }}>{desc}</p>
               </button>
             ))}
           </div>
+
           <div>
             <label className="label">Asset Title *</label>
             <input className="input" placeholder="Wheat Harvest 2025 · Kharkiv Region"
               value={form.title} onChange={(e) => set('title', e.target.value)} maxLength={64} />
           </div>
+
           <div>
             <label className="label">Description *</label>
-            <textarea className="input resize-none" rows={3}
+            <textarea className="input" style={{ resize: 'none' }} rows={3}
               placeholder="Describe the asset, quality, conditions..."
-              value={form.description} onChange={(e) => set('description', e.target.value)}
-              maxLength={512} />
+              value={form.description} onChange={(e) => set('description', e.target.value)} maxLength={512} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
               <label className="label">Category *</label>
               <select className="input" value={form.category} onChange={(e) => set('category', e.target.value)}>
@@ -153,33 +159,38 @@ export default function CreateAssetPage() {
               </select>
             </div>
           </div>
+
           <div>
             <label className="label">GPS Location (lat,lng)</label>
-            <input className="input font-mono" placeholder="49.9935,36.2304"
+            <input className="input" style={{ fontFamily: 'monospace' }} placeholder="49.9935,36.2304"
               value={form.locationGps} onChange={(e) => set('locationGps', e.target.value)} />
           </div>
+
           <div>
             <label className="label">Characteristics (JSON)</label>
-            <input className="input font-mono text-sm"
+            <input className="input" style={{ fontFamily: 'monospace', fontSize: '13px' }}
               placeholder='{"class":"2","moisture":"14%","protein":"12%"}'
               value={form.characteristics} onChange={(e) => set('characteristics', e.target.value)} />
           </div>
-          <button type="button" className="btn-primary w-full" onClick={() => setStep(2)}
-            disabled={!form.title || !form.description}>
+
+          <button type="button" className="btn-primary" style={{ width: '100%', padding: '14px' }}
+            onClick={() => setStep(2)} disabled={!form.title || !form.description}>
             Next: Pricing & Documents →
           </button>
         </div>
       )}
 
+      {/* Step 2 */}
       {step === 2 && (
-        <div className="card space-y-5">
-          <h2 className="text-lg font-semibold text-gray-100">Pricing & Documents</h2>
-          <div className="grid grid-cols-2 gap-4">
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '-0.02em' }}>Pricing & Documents</h2>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
               <label className="label">Total Supply *</label>
               <input className="input" type="number" min="1" placeholder="100"
                 value={form.totalSupply} onChange={(e) => set('totalSupply', e.target.value)} />
-              <p className="text-xs text-gray-500 mt-1">in {form.unit}s</p>
+              <p style={{ fontSize: '12px', color: '#9cbb9e', marginTop: '4px' }}>in {form.unit}s</p>
             </div>
             <div>
               <label className="label">Delivery Date *</label>
@@ -187,14 +198,15 @@ export default function CreateAssetPage() {
                 value={form.deliveryDate} onChange={(e) => set('deliveryDate', e.target.value)} />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div>
               <label className="label">Price per {form.unit} (USDC) *</label>
               <input className="input" type="number" min="0" step="0.01" placeholder="215.50"
                 value={form.pricePerUnit} onChange={(e) => set('pricePerUnit', e.target.value)} />
               {suggestedPrice && (
-                <button type="button" className="text-xs text-green-400 mt-1 hover:underline"
-                  onClick={() => set('pricePerUnit', suggestedPrice.toFixed(2))}>
+                <button type="button" onClick={() => set('pricePerUnit', suggestedPrice.toFixed(2))}
+                  style={{ fontSize: '12px', color: '#52b788', marginTop: '4px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
                   Pyth suggested: ${suggestedPrice.toFixed(2)} (click to use)
                 </button>
               )}
@@ -209,23 +221,23 @@ export default function CreateAssetPage() {
               </select>
             </div>
           </div>
-          <div className="border-t border-gray-800 pt-4 space-y-3">
-            <p className="text-sm font-medium text-gray-300">Documents (IPFS hashes)</p>
+
+          <div style={{ borderTop: '1px solid rgba(26,67,40,0.08)', paddingTop: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <label className="label">Documents (IPFS hashes)</label>
             {[
-              { key: 'doc1', label: 'Ownership / Right of title *' },
-              { key: 'doc2', label: 'Quality Report / Expert Assessment' },
-              { key: 'doc3', label: 'Notarial Deed / Legal Clearance' },
-            ].map(({ key, label }) => (
-              <div key={key}>
-                <label className="label">{label}</label>
-                <input className="input font-mono text-sm" placeholder="QmXxx..."
-                  value={(form as any)[key]} onChange={(e) => set(key, e.target.value)} />
-              </div>
+              { key: 'doc1', placeholder: 'Ownership / Right of title *' },
+              { key: 'doc2', placeholder: 'Quality Report / Expert Assessment' },
+              { key: 'doc3', placeholder: 'Notarial Deed / Legal Clearance' },
+            ].map(({ key, placeholder }) => (
+              <input key={key} className="input" style={{ fontFamily: 'monospace', fontSize: '13px' }}
+                placeholder={`QmXxx... — ${placeholder}`}
+                value={(form as any)[key]} onChange={(e) => set(key, e.target.value)} />
             ))}
           </div>
-          <div className="flex gap-3">
-            <button type="button" className="btn-secondary flex-1" onClick={() => setStep(1)}>← Back</button>
-            <button type="button" className="btn-primary flex-1" onClick={() => setStep(3)}
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setStep(1)}>← Back</button>
+            <button type="button" className="btn-primary" style={{ flex: 1 }} onClick={() => setStep(3)}
               disabled={!form.totalSupply || !form.pricePerUnit || !form.doc1}>
               Next: Review →
             </button>
@@ -233,10 +245,12 @@ export default function CreateAssetPage() {
         </div>
       )}
 
+      {/* Step 3 */}
       {step === 3 && (
-        <div className="card space-y-4">
-          <h2 className="text-lg font-semibold text-gray-100">Review & Submit</h2>
-          <div className="bg-gray-800/60 rounded-lg p-4 space-y-2 text-sm">
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <h2 style={{ fontSize: '18px', fontWeight: '700', letterSpacing: '-0.02em' }}>Review & Submit</h2>
+
+          <div style={{ background: '#f4faf6', borderRadius: '16px', padding: '20px' }}>
             {[
               ['Type', form.tokenType],
               ['Title', form.title],
@@ -247,18 +261,18 @@ export default function CreateAssetPage() {
               ['Verifications needed', form.requiredVerifications],
               ['Emitter deposit', `${((Number(form.pricePerUnit || 0) * Number(form.totalSupply || 0)) * (emitter?.depositBps || 0) / 10000).toFixed(2)} USDC (${(emitter?.depositBps || 0) / 100}% — rating ${emitter?.ratingLabel || 'N/A'})`],
             ].map(([k, v]) => (
-              <div key={k} className="flex justify-between">
-                <span className="text-gray-400">{k}</span>
-                <span className="text-gray-100">{v}</span>
+              <div key={k} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid rgba(26,67,40,0.06)', fontSize: '14px' }}>
+                <span style={{ color: '#7aaa88', fontSize: '13px' }}>{k}</span>
+                <span style={{ color: '#1a4328', fontWeight: '600' }}>{v}</span>
               </div>
             ))}
           </div>
 
           <TxStatus tx={tx} />
 
-          <div className="flex gap-3">
-            <button type="button" className="btn-secondary flex-1" onClick={() => setStep(2)}>← Back</button>
-            <button type="button" className="btn-primary flex-1 py-3"
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setStep(2)}>← Back</button>
+            <button type="button" className="btn-primary" style={{ flex: 1, padding: '16px' }}
               disabled={tx.status === 'pending' || createAsset.isPending}
               onClick={handleSubmit}>
               {tx.status === 'pending' || createAsset.isPending ? 'Creating...' : 'Create Asset Token'}
