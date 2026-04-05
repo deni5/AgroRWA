@@ -7,125 +7,137 @@ import { useEmitterProfile, useOracleProfile } from '@/hooks/useIdentity'
 
 function shortAddr(a: string) { return `${a.slice(0, 6)}…${a.slice(-4)}` }
 
+function StatRow({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: '1px solid #f0f7f2', fontSize: '14px' }}>
+      <span style={{ color: '#7aaa88', fontSize: '13px' }}>{label}</span>
+      <span style={{ color: color || '#1a4328', fontWeight: '600' }}>{value}</span>
+    </div>
+  )
+}
+
 export default function PortfolioPage() {
   const { publicKey } = useWallet()
   const { data: emitter } = useEmitterProfile(publicKey?.toBase58())
-  const { data: oracle }  = useOracleProfile(publicKey?.toBase58())
+  const { data: oracle } = useOracleProfile(publicKey?.toBase58())
 
   if (!publicKey) return (
-    <div className="max-w-lg mx-auto card text-center py-16 space-y-4">
-      <p className="text-gray-400">Connect wallet to view your portfolio.</p>
+    <div className="card" style={{ maxWidth: '480px', margin: '0 auto', textAlign: 'center', padding: '64px 32px' }}>
+      <div style={{ fontSize: '40px', marginBottom: '16px' }}>💼</div>
+      <p style={{ color: '#5a8a6a', marginBottom: '24px', fontSize: '14px' }}>
+        Connect wallet to view your portfolio.
+      </p>
       <WalletMultiButton />
     </div>
   )
 
   return (
-    <div className="space-y-6">
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-100">Portfolio</h1>
-        <p className="text-gray-400 mt-1 font-mono text-sm">{shortAddr(publicKey.toBase58())}</p>
+        <h1 style={{ fontSize: '32px', fontWeight: '700', letterSpacing: '-0.03em', marginBottom: '4px' }}>
+          Portfolio
+        </h1>
+        <p style={{ fontFamily: 'monospace', fontSize: '13px', color: '#7aaa88' }}>
+          {shortAddr(publicKey.toBase58())}
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Cards grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+
         {/* Emitter card */}
         <div className="card">
-          <h2 className="font-semibold text-gray-100 mb-3">Emitter Status</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', letterSpacing: '-0.01em' }}>
+            Emitter Status
+          </h2>
           {emitter ? (
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">KYC</span>
-                <span className={emitter.kycStatus === 'Approved' ? 'text-green-400' : 'text-amber-400'}>
-                  {emitter.kycStatus}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Rating</span>
-                <span className="text-gray-100 font-semibold">{emitter.ratingLabel} ({emitter.ratingScore})</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Deposit req.</span>
-                <span className="text-gray-100">{emitter.depositBps / 100}%</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Assets issued</span>
-                <span className="text-gray-100">{emitter.totalIssued}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Fulfilled</span>
-                <span className="text-green-400">{emitter.totalFulfilled}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Defaults</span>
-                <span className="text-red-400">{emitter.totalDefaults}</span>
-              </div>
+            <div>
+              <StatRow label="KYC"
+                value={emitter.kycStatus}
+                color={emitter.kycStatus === 'Approved' ? '#52b788' : '#e9c46a'} />
+              <StatRow label="Rating" value={`${emitter.ratingLabel} (${emitter.ratingScore})`} />
+              <StatRow label="Deposit req." value={`${emitter.depositBps / 100}%`} />
+              <StatRow label="Assets issued" value={String(emitter.totalIssued)} />
+              <StatRow label="Fulfilled" value={String(emitter.totalFulfilled)} color="#52b788" />
+              <StatRow label="Defaults" value={String(emitter.totalDefaults)} color={emitter.totalDefaults > 0 ? '#e24b4a' : '#1a4328'} />
             </div>
           ) : (
-            <div className="text-center py-4 text-gray-500 text-sm">
+            <div style={{ textAlign: 'center', padding: '24px 0', color: '#9cbb9e', fontSize: '13px' }}>
               Not registered.{' '}
-              <Link href="/kyc" className="text-green-400 underline">Register</Link>
+              <Link href="/kyc" style={{ color: '#52b788', textDecoration: 'underline' }}>Register</Link>
             </div>
           )}
         </div>
 
         {/* Oracle card */}
         <div className="card">
-          <h2 className="font-semibold text-gray-100 mb-3">Oracle Status</h2>
+          <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', letterSpacing: '-0.01em' }}>
+            Oracle Status
+          </h2>
           {oracle ? (
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Status</span>
-                <span className={oracle.isActive ? 'text-green-400' : 'text-red-400'}>
-                  {oracle.isActive ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Role</span>
-                <span className="text-gray-100">{oracle.role}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Reputation</span>
-                <span className="text-gray-100 font-semibold">{oracle.reputationScore}/1000</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Verified</span>
-                <span className="text-blue-400">{oracle.verifiedCount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Disputes</span>
-                <span className="text-red-400">{oracle.disputeCount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Stake</span>
-                <span className="text-gray-100">{(Number(oracle.stakeAmount) / 1e6).toFixed(0)} USDC</span>
-              </div>
+            <div>
+              <StatRow label="Status"
+                value={oracle.isActive ? 'Active' : 'Inactive'}
+                color={oracle.isActive ? '#52b788' : '#e24b4a'} />
+              <StatRow label="Role" value={oracle.role} />
+              <StatRow label="Reputation" value={`${oracle.reputationScore}/1000`} />
+              <StatRow label="Verified" value={String(oracle.verifiedCount)} color="#2d6a4f" />
+              <StatRow label="Disputes" value={String(oracle.disputeCount)} color={oracle.disputeCount > 0 ? '#e24b4a' : '#1a4328'} />
+              <StatRow label="Stake" value={`${(Number(oracle.stakeAmount) / 1e6).toFixed(0)} USDC`} />
             </div>
           ) : (
-            <div className="text-center py-4 text-gray-500 text-sm">
+            <div style={{ textAlign: 'center', padding: '24px 0', color: '#9cbb9e', fontSize: '13px' }}>
               Not registered.{' '}
-              <Link href="/oracle" className="text-green-400 underline">Register</Link>
+              <Link href="/oracle" style={{ color: '#52b788', textDecoration: 'underline' }}>Register</Link>
             </div>
           )}
         </div>
 
         {/* Quick actions */}
         <div className="card">
-          <h2 className="font-semibold text-gray-100 mb-3">Quick Actions</h2>
-          <div className="flex flex-col gap-2">
-            <Link href="/marketplace" className="btn-secondary text-sm text-center">Browse Assets</Link>
-            <Link href="/create-asset" className="btn-primary text-sm text-center">List New Asset</Link>
-            <Link href="/oracle" className="btn-secondary text-sm text-center">Oracle Panel</Link>
-            <Link href="/insurance" className="btn-secondary text-sm text-center">Insurance Fund</Link>
+          <h2 style={{ fontSize: '15px', fontWeight: '700', marginBottom: '16px', letterSpacing: '-0.01em' }}>
+            Quick Actions
+          </h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {[
+              { href: '/marketplace', label: 'Browse Assets', primary: false },
+              { href: '/create-asset', label: 'List New Asset', primary: true },
+              { href: '/oracle', label: 'Oracle Panel', primary: false },
+              { href: '/insurance', label: 'Insurance Fund', primary: false },
+            ].map(({ href, label, primary }) => (
+              <Link key={href} href={href} style={{
+                display: 'block',
+                textAlign: 'center',
+                padding: '10px 16px',
+                borderRadius: '12px',
+                fontSize: '13px',
+                fontWeight: '600',
+                textDecoration: 'none',
+                background: primary ? '#1a4328' : 'transparent',
+                color: primary ? '#fff' : '#2d6a4f',
+                border: primary ? 'none' : '1.5px solid rgba(26,67,40,0.15)',
+                transition: 'all 0.2s',
+              }}>
+                {label}
+              </Link>
+            ))}
           </div>
         </div>
       </div>
 
-      {/* Holdings (placeholder) */}
+      {/* Holdings */}
       <div className="card">
-        <h2 className="text-xl font-semibold text-gray-100 mb-4">Holdings</h2>
-        <div className="text-center py-10 text-gray-500">
+        <h2 style={{ fontSize: '20px', fontWeight: '700', letterSpacing: '-0.02em', marginBottom: '16px' }}>
+          Holdings
+        </h2>
+        <div style={{ textAlign: 'center', padding: '48px 0', color: '#9cbb9e', fontSize: '14px' }}>
           Token holdings will appear here after you purchase assets from the marketplace.
         </div>
       </div>
+
     </div>
   )
 }
+
