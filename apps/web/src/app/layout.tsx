@@ -6,7 +6,7 @@ import { QueryProvider } from '@/config/QueryProvider'
 import { Navbar } from '@/components/Navbar'
 import { Toaster } from 'react-hot-toast'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'], weight: ['400','500','600','700','800'] })
 
 export const metadata: Metadata = {
   title: 'AgroRWA — Agricultural Asset Tokenization',
@@ -20,7 +20,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <QueryProvider>
           <SolanaProvider>
             <Navbar />
-            <main className="max-w-3xl mx-auto px-4 py-8">
+            <main style={{
+              maxWidth: '1100px',
+              margin: '0 auto',
+              padding: '40px 32px 80px',
+            }}>
               {children}
             </main>
             <Toaster
