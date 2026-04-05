@@ -30,33 +30,22 @@ export function Navbar() {
         justifyContent: 'space-between',
       }}>
 
-        {/* Logo — Polkadot style */}
+        {/* Logo */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '48px' }}>
           <Link href="/" style={{
             textDecoration: 'none',
             display: 'flex',
             alignItems: 'baseline',
-            gap: '2px',
           }}>
             <span style={{
               fontSize: '22px',
               fontWeight: '800',
               color: '#1a4328',
               letterSpacing: '-0.04em',
-              fontFamily: "'Inter', sans-serif",
+              fontFamily: 'Inter, -apple-system, sans-serif',
               lineHeight: 1,
             }}>
-              Agro
-            </span>
-            <span style={{
-              fontSize: '22px',
-              fontWeight: '800',
-              color: '#1a4328',
-              letterSpacing: '-0.04em',
-              fontFamily: "'Inter', sans-serif",
-              lineHeight: 1,
-            }}>
-              RWA
+              AgroRWA
             </span>
             <span style={{
               width: '7px',
@@ -64,13 +53,12 @@ export function Navbar() {
               borderRadius: '50%',
               backgroundColor: '#52b788',
               display: 'inline-block',
-              marginLeft: '2px',
-              marginBottom: '2px',
+              marginLeft: '3px',
+              marginBottom: '3px',
               flexShrink: 0,
             }} />
           </Link>
 
-          {/* Nav links */}
           <div style={{ display: 'flex', gap: '32px' }}>
             {[
               { href: '/marketplace', label: 'Marketplace' },
@@ -85,7 +73,6 @@ export function Navbar() {
           </div>
         </div>
 
-        {/* Right side */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{
             fontSize: '12px',
@@ -112,7 +99,7 @@ export function Navbar() {
           <WalletMultiButton style={{
             backgroundColor: '#1a4328',
             color: '#fff',
-            fontFamily: "'Inter', sans-serif",
+            fontFamily: 'Inter, -apple-system, sans-serif',
             fontSize: '13px',
             fontWeight: '600',
             height: '40px',
