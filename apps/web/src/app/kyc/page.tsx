@@ -1,31 +1,28 @@
-'use client' 
+'use client'
 
 import { useState, useEffect } from 'react'
-import { useWallet, useConnection } from '@solana/wallet-adapter-react'
+import { useWallet } from '@solana/wallet-adapter-react'
 import { WalletMultiButton } from '@solana/wallet-adapter-react-ui'
 import { useRegisterEmitter } from '@/hooks/useIdentity'
 import { TxStatus } from '@/components/TxStatus'
 import type { TxState } from '@/types'
-import { BN } from '@coral-xyz/anchor'
 
 export default function KycPage() {
   const { publicKey, connected } = useWallet()
-  const { connection } = useConnection()
   const { mutateAsync, isPending } = useRegisterEmitter()
 
   const [form, setForm] = useState({
     legalName: '',
     edrpou: '',
-    country: 'UA',
+    country: 'Ukraine',
     region: '',
     doc1: '',
     doc2: '',
     doc3: '',
   })
-  
+
   const [tx, setTx] = useState<TxState>({ status: 'idle' })
 
-  // Очищення помилок при зміні форми
   useEffect(() => {
     if (tx.status === 'error') setTx({ status: 'idle' })
   }, [form])
@@ -34,148 +31,119 @@ export default function KycPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // КРИТИЧНА ПЕРЕВІРКА: чи готовий гаманець і підключення
     if (!connected || !publicKey) {
-      setTx({ status: 'error', error: 'Wallet not fully connected. Please reconnect.' })
+      setTx({ status: 'error', error: 'Wallet not connected. Please reconnect.' })
       return
     }
-
     setTx({ status: 'pending' })
-    
     try {
-      console.log("--- DEBUG START ---")
-      console.log("Wallet PK:", publicKey.toBase58())
-      
       const docs = [form.doc1, form.doc2, form.doc3].filter(Boolean)
-      const edrpouValue = form.edrpou.replace(/\D/g, '')
-
-      if (!edrpouValue) throw new Error('ЄДРПОУ / ІПН обов’язковий')
-
-      // Створюємо BN об'єкт окремо для перевірки
-      const edrpouBN = new BN(edrpouValue)
-      console.log("BN Created:", edrpouBN.toString())
-
-      // ПІДГОТОВКА ОБ'ЄКТА ДЛЯ МУТАЦІЇ
-      const payload = {
+      const sig = await mutateAsync({
         legalName: form.legalName.trim(),
-        edrpou: edrpouBN, 
+        edrpou: form.edrpou.trim(),
         country: form.country,
         region: form.region.trim(),
         docsIpfs: docs,
-      }
-
-      console.log("Payload prepared:", payload)
-
-      const sig = await mutateAsync(payload)
-      
-      console.log("Success Sig:", sig)
-      setTx({ status: 'success', signature: sig })
-
+      })
+      setTx({ status: 'success', sig })
     } catch (err: any) {
-      console.error("FULL ERROR LOG:", err)
-      
-      // Обробка специфічної помилки _bn
-      const errorMessage = err.message?.includes('_bn') 
-        ? "Solana Error: One of the accounts or numbers is invalid (reading _bn)." 
-        : err.message || 'Transaction failed'
-
-      setTx({ status: 'error', error: errorMessage })
-    } finally {
-      console.log("--- DEBUG END ---")
+      setTx({ status: 'error', error: err.message || 'Transaction failed' })
     }
   }
 
-  if (!publicKey) {
-    return (
-      <div className="max-w-lg mx-auto card text-center py-16 space-y-6 bg-gray-900/30 border-2 border-dashed border-gray-800">
-        <div className="text-5xl">🔑</div>
-        <div className="space-y-2">
-          <h2 className="text-xl font-bold text-white">Emitter Registration</h2>
-          <p className="text-gray-400">Please connect your Solana wallet to continue.</p>
-        </div>
-        <div className="flex justify-center">
-          <WalletMultiButton className="!bg-agro-600 hover:!bg-agro-700" />
-        </div>
-      </div>
-    )
-  }
+  if (!publicKey) return (
+    <div className="card" style={{ maxWidth: '480px', margin: '0 auto', textAlign: 'center', padding: '64px 32px' }}>
+      <div style={{ fontSize: '48px', marginBottom: '16px' }}>🔑</div>
+      <h2 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '8px', letterSpacing: '-0.02em' }}>
+        Emitter Registration
+      </h2>
+      <p style={{ color: '#5a8a6a', marginBottom: '24px', fontSize: '14px' }}>
+        Connect your Solana wallet to continue.
+      </p>
+      <WalletMultiButton />
+    </div>
+  )
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-20">
-      <div className="flex items-center gap-4 border-b border-gray-800 pb-6">
-        <div className="p-3 bg-agro-600/10 rounded-xl text-3xl">🌾</div>
+    <div style={{ maxWidth: '640px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <div style={{
+          width: '52px', height: '52px', borderRadius: '16px',
+          background: '#d8f3dc', display: 'flex', alignItems: 'center',
+          justifyContent: 'center', fontSize: '24px', flexShrink: 0,
+        }}>🌾</div>
         <div>
-          <h1 className="text-3xl font-bold text-gray-100">Emitter KYC Registration</h1>
-          <p className="text-gray-400">AgroRWA Identity Verification</p>
+          <h1 style={{ fontSize: '28px', fontWeight: '700', letterSpacing: '-0.03em', marginBottom: '2px' }}>
+            Emitter KYC Registration
+          </h1>
+          <p style={{ color: '#5a8a6a', fontSize: '14px' }}>AgroRWA Identity Verification</p>
         </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6 bg-gray-900/20 p-8 rounded-2xl border border-gray-800">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div className="md:col-span-2">
-            <label className="text-sm font-medium text-gray-400 mb-2 block">Legal Name / ПІБ *</label>
-            <input 
-              className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-agro-500 outline-none" 
-              placeholder="Full name or Company name"
-              value={form.legalName} 
-              onChange={(e) => set('legalName', e.target.value)} 
-              required 
-            />
-          </div>
+      {/* Form */}
+      <form onSubmit={handleSubmit} className="card" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
+        <div>
+          <label className="label">Legal Name / ПІБ *</label>
+          <input className="input" placeholder="Full name or Company name"
+            value={form.legalName} onChange={(e) => set('legalName', e.target.value)} required />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
-            <label className="text-sm font-medium text-gray-400 mb-2 block">ЄДРПОУ / ІПН *</label>
-            <input 
-              className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-agro-400 font-mono focus:ring-2 focus:ring-agro-500 outline-none" 
+            <label className="label">ЄДРПОУ / ІПН *</label>
+            <input className="input" style={{ fontFamily: 'monospace' }}
               placeholder="12345678"
-              value={form.edrpou} 
-              onChange={(e) => set('edrpou', e.target.value)} 
-              required 
-            />
+              value={form.edrpou} onChange={(e) => set('edrpou', e.target.value)} required />
           </div>
-
           <div>
-            <label className="text-sm font-medium text-gray-400 mb-2 block">Country</label>
-            <select 
-              className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-agro-500 outline-none"
-              value={form.country} 
-              onChange={(e) => set('country', e.target.value)}
-            >
-              <option value="UA">Ukraine</option>
-              <option value="PL">Poland</option>
+            <label className="label">Country</label>
+            <select className="input" value={form.country} onChange={(e) => set('country', e.target.value)}>
+              <option value="Ukraine">Ukraine</option>
+              <option value="Poland">Poland</option>
               <option value="Other">Other</option>
             </select>
           </div>
-
-          <div className="md:col-span-2">
-            <label className="text-sm font-medium text-gray-400 mb-2 block">Region / Oblast *</label>
-            <input 
-              className="w-full bg-gray-950 border border-gray-800 rounded-lg p-3 text-white focus:ring-2 focus:ring-agro-500 outline-none" 
-              placeholder="e.g. Kyivska"
-              value={form.region} 
-              onChange={(e) => set('region', e.target.value)} 
-              required 
-            />
-          </div>
         </div>
 
-        <div className="space-y-4 pt-4 border-t border-gray-800">
-          <p className="text-xs font-bold text-agro-500 uppercase tracking-widest">Verification Documents (IPFS)</p>
-          <input className="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-sm font-mono text-gray-300" placeholder="IPFS Hash 1 (Passport/Extract)" value={form.doc1} onChange={(e) => set('doc1', e.target.value)} required />
-          <input className="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-sm font-mono text-gray-300" placeholder="IPFS Hash 2 (Registration)" value={form.doc2} onChange={(e) => set('doc2', e.target.value)} />
-          <input className="w-full bg-gray-950 border border-gray-800 rounded-lg p-2 text-sm font-mono text-gray-300" placeholder="IPFS Hash 3 (Optional)" value={form.doc3} onChange={(e) => set('doc3', e.target.value)} />
+        <div>
+          <label className="label">Region / Oblast *</label>
+          <input className="input" placeholder="e.g. Kharkivska"
+            value={form.region} onChange={(e) => set('region', e.target.value)} required />
+        </div>
+
+        {/* Documents */}
+        <div style={{
+          borderTop: '1px solid rgba(26,67,40,0.08)',
+          paddingTop: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px',
+        }}>
+          <label className="label">Verification Documents (IPFS)</label>
+          {[
+            { key: 'doc1', placeholder: 'IPFS Hash 1 — Passport / Company Extract *', required: true },
+            { key: 'doc2', placeholder: 'IPFS Hash 2 — Registration Certificate', required: false },
+            { key: 'doc3', placeholder: 'IPFS Hash 3 — Optional', required: false },
+          ].map(({ key, placeholder, required }) => (
+            <input key={key} className="input"
+              style={{ fontFamily: 'monospace', fontSize: '13px' }}
+              placeholder={placeholder}
+              value={(form as any)[key]}
+              onChange={(e) => set(key, e.target.value)}
+              required={required} />
+          ))}
         </div>
 
         <TxStatus tx={tx} />
 
-        <button 
-          type="submit" 
-          disabled={isPending}
-          className="w-full bg-agro-600 hover:bg-agro-500 text-white font-bold py-4 rounded-xl transition-all shadow-lg shadow-agro-600/20 disabled:opacity-50"
-        >
+        <button type="submit" className="btn-primary" style={{ width: '100%', padding: '16px' }}
+          disabled={isPending}>
           {isPending ? 'Sending to Blockchain...' : 'Submit KYC Application'}
         </button>
+
       </form>
     </div>
   )
