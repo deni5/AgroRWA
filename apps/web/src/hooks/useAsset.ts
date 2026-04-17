@@ -31,7 +31,7 @@ function encodeStringVec(arr: string[]): Buffer {
 }
 function encodeU8(n: number): Buffer { const b = Buffer.alloc(1); b.writeUInt8(n, 0); return b }
 function encodeU64(n: BN): Buffer { return n.toArrayLike(Buffer, 'le', 8) }
-function encodeI64(n: number): Buffer { return new BN(n).toArrayLike(Buffer, 'le', 8) }
+function encodeI64(n: number): Buffer { return new BN(n.toString()).toArrayLike(Buffer, 'le', 8) }
  
 const TOKEN_TYPE_IDX: Record<TokenType, number> = { Forward: 0, Asset: 1, Credit: 2, Revenue: 3 }
 const CATEGORY_IDX: Record<AssetCategory, number> = {
