@@ -281,11 +281,36 @@ export function useRegisterOracle() {
   })
 }
  
+// ─── Emitter rating tiers ──────────────────────────────────────────────────────
+// Єдине джерело істини для відповідності рейтингового балу емітента (0-1000)
+// його буквеній позначці та обов'язковому депозиту (в базисних пунктах).
+// Раніше цей самий поріг дублювався у двох незалежних ланцюжках тернарних
+// операторів (ratingLabel і depositBps) — зміна межі рейтингу вимагала
+// синхронної правки в обох місцях і давала 8 зайвих точок розгалуження.
+
+interface RatingTier {
+  minScore: number
+  label: string
+  depositBps: number
+}
+
+const RATING_TIERS: readonly RatingTier[] = [
+  { minScore: 900, label: 'AAA', depositBps: 200 },
+  { minScore: 700, label: 'AA',  depositBps: 500 },
+  { minScore: 500, label: 'A',   depositBps: 800 },
+  { minScore: 300, label: 'B',   depositBps: 1200 },
+  { minScore: 0,   label: 'C',   depositBps: 2000 },
+]
+
+function getRatingTier(score: number): RatingTier {
+  return RATING_TIERS.find(tier => score >= tier.minScore) ?? RATING_TIERS[RATING_TIERS.length - 1]
+}
+
 // ─── Parsers (raw buffer) ─────────────────────────────────────────────────────
- 
+
 function parseEmitter(pubkey: PublicKey, data: Buffer): EmitterProfile {
   let offset = 8
- 
+
   const readPubkey = () => {
     const pk = new PublicKey(data.slice(offset, offset + 32)).toBase58()
     offset += 32; return pk
@@ -303,17 +328,13 @@ function parseEmitter(pubkey: PublicKey, data: Buffer): EmitterProfile {
   const readU16 = () => { const v = data.readUInt16LE(offset); offset += 2; return v }
   const readU32 = () => { const v = data.readUInt32LE(offset); offset += 4; return v }
   const readI64 = () => { const v = Number(data.readBigInt64LE(offset)); offset += 8; return v }
-  const readOptionPubkey = () => {
+  // Раніше: readOptionPubkey() і readOptionI64() — дві майже ідентичні функції,
+  // кожна з власним if(!some). Тепер — один дженерик-хелпер readOption<T>.
+  const readOption = <T,>(reader: () => T): T | undefined => {
     const some = Boolean(data[offset++])
-    if (!some) return undefined
-    return readPubkey()
+    return some ? reader() : undefined
   }
-  const readOptionI64 = () => {
-    const some = Boolean(data[offset++])
-    if (!some) return undefined
-    return readI64()
-  }
- 
+
   const wallet         = readPubkey()
   const legalName      = readString()
   const edrpou         = readString()
@@ -323,18 +344,17 @@ function parseEmitter(pubkey: PublicKey, data: Buffer): EmitterProfile {
   const kycStatusIdx   = readU8()
   const kycStatuses    = ['Pending', 'Approved', 'Rejected', 'Suspended'] as const
   const kycStatus      = kycStatuses[kycStatusIdx] ?? 'Pending'
-  const kycReviewer    = readOptionPubkey()
-  const kycReviewedAt  = readOptionI64()
+  const kycReviewer    = readOption(readPubkey)
+  const kycReviewedAt  = readOption(readI64)
   const kycNote        = readString()
   const ratingScore    = readU16()
   const totalIssued    = readU32()
   const totalFulfilled = readU32()
   const totalDefaults  = readU8()
   const registeredAt   = readI64()
- 
-  const ratingLabel = ratingScore >= 900 ? 'AAA' : ratingScore >= 700 ? 'AA' : ratingScore >= 500 ? 'A' : ratingScore >= 300 ? 'B' : 'C'
-  const depositBps  = ratingScore >= 900 ? 200  : ratingScore >= 700 ? 500  : ratingScore >= 500 ? 800 : ratingScore >= 300 ? 1200 : 2000
- 
+
+  const { label: ratingLabel, depositBps } = getRatingTier(ratingScore)
+
   return {
     address: pubkey.toBase58(), wallet, legalName, edrpou, country, region,
     docsIpfs, kycStatus, kycReviewer, kycReviewedAt, kycNote,
