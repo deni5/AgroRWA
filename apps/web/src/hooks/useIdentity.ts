@@ -124,64 +124,69 @@ export function useEmitterProfile(wallet?: string) {
     enabled: !!wallet,
     queryFn: async () => {
       if (!wallet) return null
-      try {
-        const [pda] = getEmitterPDA(new PublicKey(wallet))
-        const info = await connection.getAccountInfo(pda)
-        if (!info) return null
-        return parseEmitter(pda, info.data)
-      } catch (e) {
-        console.error('Error fetching emitter:', e)
-        return null
-      }
+      // Раніше: try/catch навколо всього запиту повертав null і на
+      // "профіль не зареєстрований", і на збій RPC — форма реєстрації
+      // мовчки показувала "зареєструватись", навіть якщо просто зникло
+      // з'єднання. Тепер помилка мережі/парсингу прокидається в
+      // isError/error хука; null лишається лише для випадку, коли акаунт
+      // справді відсутній on-chain.
+      const [pda] = getEmitterPDA(new PublicKey(wallet))
+      const info = await connection.getAccountInfo(pda)
+      if (!info) return null
+      return parseEmitter(pda, info.data)
     },
     staleTime: 30_000,
+    retry: 3,
   })
 }
- 
+
 // ─── Fetch oracle profile ─────────────────────────────────────────────────────
- 
+
 export function useOracleProfile(wallet?: string) {
   const { connection } = useConnection()
- 
+
   return useQuery<OracleProfile | null>({
     queryKey: ['oracle', wallet],
     enabled: !!wallet,
     queryFn: async () => {
       if (!wallet) return null
-      try {
-        const [pda] = getOraclePDA(new PublicKey(wallet))
-        const info = await connection.getAccountInfo(pda)
-        if (!info) return null
-        return parseOracle(pda, info.data)
-      } catch (e) {
-        console.error('Error fetching oracle:', e)
-        return null
-      }
+      // Те саме виправлення, що й у useEmitterProfile вище.
+      const [pda] = getOraclePDA(new PublicKey(wallet))
+      const info = await connection.getAccountInfo(pda)
+      if (!info) return null
+      return parseOracle(pda, info.data)
     },
     staleTime: 30_000,
+    retry: 3,
   })
 }
- 
+
 // ─── Fetch all oracles ────────────────────────────────────────────────────────
- 
+
 export function useAllOracles() {
   const { connection } = useConnection()
- 
+
   return useQuery<OracleProfile[]>({
     queryKey: ['oracles', 'all'],
     queryFn: async () => {
-      try {
-        const accounts = await connection.getProgramAccounts(IDENTITY_PROGRAM_ID)
-        return accounts
-          .map(({ pubkey, account }) => {
-            try { return parseOracle(pubkey, account.data) } catch { return null }
-          })
-          .filter((o): o is OracleProfile => o !== null && o.isActive)
-      } catch {
-        return []
-      }
+      // Раніше: збій getProgramAccounts (напр. обрив RPC) повертав [] —
+      // список оракулів виглядав як "оракулів ще немає", хоча насправді
+      // запит просто не дійшов до вузла. Тепер помилка прокидається далі;
+      // пошкоджений ОКРЕМИЙ акаунт, як і раніше, лише пропускається.
+      const accounts = await connection.getProgramAccounts(IDENTITY_PROGRAM_ID)
+      return accounts
+        .map(({ pubkey, account }) => {
+          try {
+            return parseOracle(pubkey, account.data)
+          } catch (e) {
+            console.warn('Skipping unparsable oracle account', pubkey.toBase58(), e)
+            return null
+          }
+        })
+        .filter((o): o is OracleProfile => o !== null && o.isActive)
     },
     staleTime: 60_000,
+    retry: 3,
   })
 }
  

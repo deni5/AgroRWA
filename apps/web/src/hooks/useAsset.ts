@@ -41,43 +41,62 @@ const CATEGORY_IDX: Record<AssetCategory, number> = {
 // ─── Fetch all assets ─────────────────────────────────────────────────────────
 export function useAllAssets() {
   const { connection } = useConnection()
- 
+
   return useQuery<AssetRecord[]>({
     queryKey: ['assets', 'all'],
     queryFn: async () => {
-      try {
-        const accounts = await connection.getProgramAccounts(REGISTRY_PROGRAM_ID)
-        return accounts
-          .map(({ pubkey, account }) => {
-            try { return parseAsset(pubkey, account.data) } catch { return null }
-          })
-          .filter((a): a is AssetRecord => a !== null)
-      } catch { return [] }
+      // Раніше: весь виклик connection.getProgramAccounts був обгорнутий у
+      // try/catch, що повертав [] і на "акаунтів справді немає", і на збій
+      // RPC (обірваний інтернет, таймаут, 429 від провайдера) — UI показував
+      // однаковий порожній список в обох випадках, і React Query не мав
+      // шансу застосувати isError/retry, бо помилка ніколи до нього не
+      // доходила. Тепер збій RPC-виклику прокидається як Error і потрапляє
+      // в isError/error хука — компонент може показати toast.error і
+      // відрізнити "даних немає" від "запит не вдався".
+      const accounts = await connection.getProgramAccounts(REGISTRY_PROGRAM_ID)
+      // Парсинг ОКРЕМОГО акаунта лишається в try/catch навмисно: один
+      // пошкоджений/несумісний за форматом акаунт не повинен обвалювати
+      // весь список — він просто пропускається, з попередженням у консоль.
+      return accounts
+        .map(({ pubkey, account }) => {
+          try {
+            return parseAsset(pubkey, account.data)
+          } catch (e) {
+            console.warn('Skipping unparsable asset account', pubkey.toBase58(), e)
+            return null
+          }
+        })
+        .filter((a): a is AssetRecord => a !== null)
     },
     staleTime: 30_000,
+    retry: 3,
   })
 }
- 
+
 // ─── Fetch single asset ───────────────────────────────────────────────────────
 export function useAsset(mint?: string) {
   const { connection } = useConnection()
- 
+
   return useQuery<AssetRecord | null>({
     queryKey: ['asset', mint],
     enabled: !!mint,
     queryFn: async () => {
       if (!mint) return null
-      try {
-        const [pda] = PublicKey.findProgramAddressSync(
-          [Buffer.from('asset'), new PublicKey(mint).toBuffer()],
-          REGISTRY_PROGRAM_ID
-        )
-        const info = await connection.getAccountInfo(pda)
-        if (!info) return null
-        return parseAsset(pda, info.data)
-      } catch { return null }
+      // Раніше: try/catch навколо getAccountInfo/parseAsset повертав null і
+      // на "актив не знайдено", і на збій RPC — сторінка активу мовчки
+      // показувала "не знайдено" замість помилки з'єднання. Тепер помилка
+      // RPC/парсингу прокидається далі, і лише відсутність акаунта (info
+      // === null) трактується як легітимний null.
+      const [pda] = PublicKey.findProgramAddressSync(
+        [Buffer.from('asset'), new PublicKey(mint).toBuffer()],
+        REGISTRY_PROGRAM_ID
+      )
+      const info = await connection.getAccountInfo(pda)
+      if (!info) return null
+      return parseAsset(pda, info.data)
     },
     staleTime: 30_000,
+    retry: 3,
   })
 }
  
