@@ -10,7 +10,12 @@ pub mod errors;
 use state::*;
 use errors::MarketError;
 
-pub const PLATFORM_ADMIN_STR: &str = "FWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d";
+// Раніше: рядкова константа PLATFORM_ADMIN_STR була визначена, але ніде не
+// використовувалась для перевірки — platform_vault приймався без жодних
+// обмежень, що дозволяло підмінити його довільним токен-акаунтом і викрасти
+// комісію платформи. Тепер константа реально задіяна як обмеження акаунта
+// (див. FillOrder::platform_vault нижче).
+pub const PLATFORM_ADMIN: Pubkey = anchor_lang::prelude::pubkey!("FWm4MDuTMWKJwdawF3VtUqWuZNi4Jq7TdJYWPnU5Yt8d");
 pub const PLATFORM_FEE_BPS: u64 = 50;
 pub const INSURANCE_FEE_BPS: u64 = 50;
 pub const ORACLE_FEE_BPS: u64 = 50;
@@ -54,12 +59,27 @@ pub mod marketplace {
         if let Some(exp) = ctx.accounts.listing.expires_at {
             require!(clock.unix_timestamp < exp, MarketError::ListingExpired);
         }
-        let total = (ctx.accounts.listing.price_per_unit as u128)
-            .checked_mul(amount as u128).ok_or(MarketError::MathOverflow)? as u64;
-        let platform_fee = total * PLATFORM_FEE_BPS / 10_000;
-        let insurance_fee = total * INSURANCE_FEE_BPS / 10_000;
-        let oracle_fee = total * ORACLE_FEE_BPS / 10_000;
-        let emitter_net = total - platform_fee - insurance_fee - oracle_fee;
+        // Раніше: `... as u64` після checked_mul у просторі u128 без перевірки,
+        // що результат взагалі влазить у u64 — при переповненні відбувалося
+        // мовчазне обрізання (wrap), а не помилка, що псувало суму без жодного
+        // видимого сигналу. Тепер — явна перевірка через TryFrom.
+        let total_u128 = (ctx.accounts.listing.price_per_unit as u128)
+            .checked_mul(amount as u128)
+            .ok_or(MarketError::MathOverflow)?;
+        let total: u64 = u64::try_from(total_u128).map_err(|_| MarketError::MathOverflow)?;
+        // Раніше: сирі `*`, `/`, `-` без перевірки — покладалися на те, що
+        // Solana-профіль збірки має ввімкнені overflow-checks. Явні checked_*
+        // роблять контракт коректним незалежно від налаштувань профілю збірки.
+        let platform_fee = total.checked_mul(PLATFORM_FEE_BPS).ok_or(MarketError::MathOverflow)?
+            .checked_div(10_000).ok_or(MarketError::MathOverflow)?;
+        let insurance_fee = total.checked_mul(INSURANCE_FEE_BPS).ok_or(MarketError::MathOverflow)?
+            .checked_div(10_000).ok_or(MarketError::MathOverflow)?;
+        let oracle_fee = total.checked_mul(ORACLE_FEE_BPS).ok_or(MarketError::MathOverflow)?
+            .checked_div(10_000).ok_or(MarketError::MathOverflow)?;
+        let emitter_net = total
+            .checked_sub(platform_fee).ok_or(MarketError::MathOverflow)?
+            .checked_sub(insurance_fee).ok_or(MarketError::MathOverflow)?
+            .checked_sub(oracle_fee).ok_or(MarketError::MathOverflow)?;
         token::transfer(CpiContext::new(ctx.accounts.token_program.to_account_info(), Transfer {
             from: ctx.accounts.investor_payment.to_account_info(),
             to: ctx.accounts.emitter_payment.to_account_info(),
@@ -192,12 +212,29 @@ pub struct FillOrder<'info> {
     pub trade_record: Account<'info, TradeRecord>,
     #[account(mut, seeds = [b"escrow", listing.asset_mint.as_ref(), listing.emitter.as_ref()], bump)]
     pub escrow_vault: Account<'info, TokenAccount>,
-    #[account(mut)] pub investor_payment: Account<'info, TokenAccount>,
-    #[account(mut)] pub emitter_payment: Account<'info, TokenAccount>,
-    #[account(mut)] pub platform_vault: Account<'info, TokenAccount>,
-    #[account(mut)] pub insurance_vault: Account<'info, TokenAccount>,
-    #[account(mut)] pub oracle_fee_vault: Account<'info, TokenAccount>,
-    #[account(mut)] pub investor_token_account: Account<'info, TokenAccount>,
+    // Раніше: жодних обмежень на ці шість токен-акаунтів — інструкцію можна
+    // було викликати з довільними чужими акаунтами замість справжніх
+    // отримувачів платежу і вкрасти кошти емітента або комісії платформи.
+    // Anchor не перевіряє відповідність акаунтів автоматично — без явних
+    // `token::authority`/`constraint` довільний виклик приймався як валідний.
+    #[account(mut, token::authority = investor)]
+    pub investor_payment: Account<'info, TokenAccount>,
+    #[account(mut, token::authority = listing.emitter)]
+    pub emitter_payment: Account<'info, TokenAccount>,
+    #[account(mut, constraint = platform_vault.owner == PLATFORM_ADMIN @ MarketError::Unauthorized)]
+    pub platform_vault: Account<'info, TokenAccount>,
+    // Примітка (відома межа виправлення): insurance_vault і oracle_fee_vault
+    // перевіряються проти того самого PLATFORM_ADMIN, оскільки в програмі
+    // немає окремо визначених адміністраторів страхового фонду та оракулів.
+    // Рекомендація на наступну ітерацію: ввести окремі конфігуровані pubkey
+    // для admin страхування/оракулів (напр. через PDA-акаунт конфігурації)
+    // замість повторного використання адміна маркетплейсу.
+    #[account(mut, constraint = insurance_vault.owner == PLATFORM_ADMIN @ MarketError::Unauthorized)]
+    pub insurance_vault: Account<'info, TokenAccount>,
+    #[account(mut, constraint = oracle_fee_vault.owner == PLATFORM_ADMIN @ MarketError::Unauthorized)]
+    pub oracle_fee_vault: Account<'info, TokenAccount>,
+    #[account(mut, token::authority = investor)]
+    pub investor_token_account: Account<'info, TokenAccount>,
     #[account(mut)] pub investor: Signer<'info>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
