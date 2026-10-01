@@ -15,6 +15,115 @@ pub const PLATFORM_FEE_BPS: u64 = 50;
 pub const INSURANCE_FEE_BPS: u64 = 50;
 pub const ORACLE_FEE_BPS: u64 = 50;
 
+/// Результат розрахунку комісій для однієї угоди fill_order.
+/// Винесено в окрему структуру, щоб calculate_fees мала один чіткий
+/// обов'язок (SRP) і не змішувала розрахунок із переказами токенів.
+pub struct OrderFees {
+    pub total: u64,
+    pub platform_fee: u64,
+    pub insurance_fee: u64,
+    pub oracle_fee: u64,
+    pub emitter_net: u64,
+}
+
+/// Перевірка бізнес-правил лістингу перед виконанням угоди.
+/// Guard-clause стиль (require! одразу виходить з помилкою) — складність
+/// не змінюється порівняно з оригіналом, але перевірки ізольовані від
+/// решти логіки fill_order і їх можна покрити окремими unit-тестами.
+fn validate_fill(listing: &Listing, clock: &Clock, amount: u64) -> Result<()> {
+    require!(listing.status == ListingStatus::Active, MarketError::ListingNotActive);
+    require!(amount >= listing.min_lot, MarketError::BelowMinLot);
+    require!(amount <= listing.amount_remaining, MarketError::InsufficientTokens);
+    if let Some(exp) = listing.expires_at {
+        require!(clock.unix_timestamp < exp, MarketError::ListingExpired);
+    }
+    Ok(())
+}
+
+/// Розрахунок суми угоди та трьох комісій. Чиста функція без побічних
+/// ефектів (не звертається до ctx.accounts) — легко тестувати ізольовано.
+fn calculate_fees(price_per_unit: u64, amount: u64) -> Result<OrderFees> {
+    let total = (price_per_unit as u128)
+        .checked_mul(amount as u128).ok_or(MarketError::MathOverflow)? as u64;
+    let platform_fee = total * PLATFORM_FEE_BPS / 10_000;
+    let insurance_fee = total * INSURANCE_FEE_BPS / 10_000;
+    let oracle_fee = total * ORACLE_FEE_BPS / 10_000;
+    let emitter_net = total - platform_fee - insurance_fee - oracle_fee;
+    Ok(OrderFees { total, platform_fee, insurance_fee, oracle_fee, emitter_net })
+}
+
+/// Чотири перекази CPI, що розподіляють кошти інвестора між емітентом
+/// і трьома vault-ами комісій. Винесено окремо від розрахунку (crate_fees)
+/// та від запису угоди (record_trade) — кожна функція відповідає за один крок.
+fn distribute_payment(ctx: &Context<FillOrder>, fees: &OrderFees) -> Result<()> {
+    token::transfer(CpiContext::new(ctx.accounts.token_program.to_account_info(), Transfer {
+        from: ctx.accounts.investor_payment.to_account_info(),
+        to: ctx.accounts.emitter_payment.to_account_info(),
+        authority: ctx.accounts.investor.to_account_info(),
+    }), fees.emitter_net)?;
+    token::transfer(CpiContext::new(ctx.accounts.token_program.to_account_info(), Transfer {
+        from: ctx.accounts.investor_payment.to_account_info(),
+        to: ctx.accounts.platform_vault.to_account_info(),
+        authority: ctx.accounts.investor.to_account_info(),
+    }), fees.platform_fee)?;
+    token::transfer(CpiContext::new(ctx.accounts.token_program.to_account_info(), Transfer {
+        from: ctx.accounts.investor_payment.to_account_info(),
+        to: ctx.accounts.insurance_vault.to_account_info(),
+        authority: ctx.accounts.investor.to_account_info(),
+    }), fees.insurance_fee)?;
+    token::transfer(CpiContext::new(ctx.accounts.token_program.to_account_info(), Transfer {
+        from: ctx.accounts.investor_payment.to_account_info(),
+        to: ctx.accounts.oracle_fee_vault.to_account_info(),
+        authority: ctx.accounts.investor.to_account_info(),
+    }), fees.oracle_fee)?;
+    Ok(())
+}
+
+/// Переказ активу з ескроу інвестору, підписаний PDA лістингу.
+fn release_escrow(ctx: &Context<FillOrder>, amount: u64) -> Result<()> {
+    let asset_mint_key = ctx.accounts.listing.asset_mint;
+    let emitter_key = ctx.accounts.listing.emitter;
+    let bump = ctx.accounts.listing.bump;
+    let seeds = &[b"listing".as_ref(), asset_mint_key.as_ref(), emitter_key.as_ref(), &[bump]];
+    token::transfer(CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), Transfer {
+        from: ctx.accounts.escrow_vault.to_account_info(),
+        to: ctx.accounts.investor_token_account.to_account_info(),
+        authority: ctx.accounts.listing.to_account_info(),
+    }, &[seeds]), amount)
+}
+
+/// Запис історичного запису про угоду (TradeRecord). Без розгалужень —
+/// лише присвоєння полів, тому на складність V(G) не впливає, але раніше
+/// була перемішана в тілі fill_order з розрахунками й переказами.
+fn record_trade(accounts: &mut FillOrder, amount: u64, fees: &OrderFees, traded_at: i64, trade_bump: u8) {
+    let listing_key = accounts.listing.key();
+    let asset_mint = accounts.listing.asset_mint;
+    let seller = accounts.listing.emitter;
+    let price_per_unit = accounts.listing.price_per_unit;
+    let buyer = accounts.investor.key();
+    let trade = &mut accounts.trade_record;
+    trade.listing = listing_key;
+    trade.asset_mint = asset_mint;
+    trade.seller = seller;
+    trade.buyer = buyer;
+    trade.amount = amount;
+    trade.price_per_unit = price_per_unit;
+    trade.total_payment = fees.total;
+    trade.platform_fee = fees.platform_fee;
+    trade.insurance_fee = fees.insurance_fee;
+    trade.oracle_fee = fees.oracle_fee;
+    trade.traded_at = traded_at;
+    trade.bump = trade_bump;
+}
+
+/// Оновлення залишку лістингу та, за потреби, закриття його статусом Filled.
+fn close_if_filled(listing: &mut Listing, amount: u64) {
+    listing.amount_remaining = listing.amount_remaining.saturating_sub(amount);
+    if listing.amount_remaining == 0 {
+        listing.status = ListingStatus::Filled;
+    }
+}
+
 #[program]
 pub mod marketplace {
     use super::*;
@@ -46,69 +155,20 @@ pub mod marketplace {
         Ok(())
     }
 
-    pub fn fill_order(ctx: Context<FillOrder>, amount: u64) -> Result<()> {
+    pub fn fill_order(mut ctx: Context<FillOrder>, amount: u64) -> Result<()> {
         let clock = Clock::get()?;
-        require!(ctx.accounts.listing.status == ListingStatus::Active, MarketError::ListingNotActive);
-        require!(amount >= ctx.accounts.listing.min_lot, MarketError::BelowMinLot);
-        require!(amount <= ctx.accounts.listing.amount_remaining, MarketError::InsufficientTokens);
-        if let Some(exp) = ctx.accounts.listing.expires_at {
-            require!(clock.unix_timestamp < exp, MarketError::ListingExpired);
-        }
-        let total = (ctx.accounts.listing.price_per_unit as u128)
-            .checked_mul(amount as u128).ok_or(MarketError::MathOverflow)? as u64;
-        let platform_fee = total * PLATFORM_FEE_BPS / 10_000;
-        let insurance_fee = total * INSURANCE_FEE_BPS / 10_000;
-        let oracle_fee = total * ORACLE_FEE_BPS / 10_000;
-        let emitter_net = total - platform_fee - insurance_fee - oracle_fee;
-        token::transfer(CpiContext::new(ctx.accounts.token_program.to_account_info(), Transfer {
-            from: ctx.accounts.investor_payment.to_account_info(),
-            to: ctx.accounts.emitter_payment.to_account_info(),
-            authority: ctx.accounts.investor.to_account_info(),
-        }), emitter_net)?;
-        token::transfer(CpiContext::new(ctx.accounts.token_program.to_account_info(), Transfer {
-            from: ctx.accounts.investor_payment.to_account_info(),
-            to: ctx.accounts.platform_vault.to_account_info(),
-            authority: ctx.accounts.investor.to_account_info(),
-        }), platform_fee)?;
-        token::transfer(CpiContext::new(ctx.accounts.token_program.to_account_info(), Transfer {
-            from: ctx.accounts.investor_payment.to_account_info(),
-            to: ctx.accounts.insurance_vault.to_account_info(),
-            authority: ctx.accounts.investor.to_account_info(),
-        }), insurance_fee)?;
-        token::transfer(CpiContext::new(ctx.accounts.token_program.to_account_info(), Transfer {
-            from: ctx.accounts.investor_payment.to_account_info(),
-            to: ctx.accounts.oracle_fee_vault.to_account_info(),
-            authority: ctx.accounts.investor.to_account_info(),
-        }), oracle_fee)?;
-        let asset_mint_key = ctx.accounts.listing.asset_mint;
-        let emitter_key = ctx.accounts.listing.emitter;
-        let bump = ctx.accounts.listing.bump;
-        let seeds = &[b"listing".as_ref(), asset_mint_key.as_ref(), emitter_key.as_ref(), &[bump]];
-        token::transfer(CpiContext::new_with_signer(ctx.accounts.token_program.to_account_info(), Transfer {
-            from: ctx.accounts.escrow_vault.to_account_info(),
-            to: ctx.accounts.investor_token_account.to_account_info(),
-            authority: ctx.accounts.listing.to_account_info(),
-        }, &[seeds]), amount)?;
-        let listing_key = ctx.accounts.listing.key();
-        let asset_mint = ctx.accounts.listing.asset_mint;
-        let seller = ctx.accounts.listing.emitter;
-        let price_per_unit = ctx.accounts.listing.price_per_unit;
-        let trade = &mut ctx.accounts.trade_record;
-        trade.listing = listing_key;
-        trade.asset_mint = asset_mint;
-        trade.seller = seller;
-        trade.buyer = ctx.accounts.investor.key();
-        trade.amount = amount;
-        trade.price_per_unit = price_per_unit;
-        trade.total_payment = total;
-        trade.platform_fee = platform_fee;
-        trade.insurance_fee = insurance_fee;
-        trade.oracle_fee = oracle_fee;
-        trade.traded_at = clock.unix_timestamp;
-        trade.bump = ctx.bumps.trade_record;
-        let listing = &mut ctx.accounts.listing;
-        listing.amount_remaining = listing.amount_remaining.saturating_sub(amount);
-        if listing.amount_remaining == 0 { listing.status = ListingStatus::Filled; }
+        validate_fill(&ctx.accounts.listing, &clock, amount)?;
+
+        let fees = calculate_fees(ctx.accounts.listing.price_per_unit, amount)?;
+
+        distribute_payment(&ctx, &fees)?;
+        release_escrow(&ctx, amount)?;
+
+        let bump = ctx.bumps.trade_record;
+        let traded_at = clock.unix_timestamp;
+        record_trade(&mut ctx.accounts, amount, &fees, traded_at, bump);
+        close_if_filled(&mut ctx.accounts.listing, amount);
+
         Ok(())
     }
 
